@@ -9,6 +9,7 @@ from tkinter import ttk, filedialog, messagebox
 
 from .hardware import Hardware, STAND_CHANNELS, AO_DEVICES, AI_DEVICES
 from .cinterp import (Program, Interpreter, CompileError, RunError, StopRun, read_source)
+from .stand import StandWindow
 
 SPEEDS = [("×1 (реальное время)", 1.0), ("×5", 5.0), ("×20", 20.0), ("×100", 100.0),
           ("Максимум", 0.0)]
