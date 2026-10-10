@@ -1522,9 +1522,8 @@ class Interpreter(object):
         if len(offs) > len(shape):
             raise RunError("слишком много индексов (индексация не массива)")
         rem = shape[len(offs):]
-        stride = _dim_prod(rem)
-        for d in offs:
-            k += d * stride
+        for pos, d in enumerate(offs):      # шаг каждого индекса свой: a[i][j] = i*cols + j
+            k += d * _dim_prod(shape[pos + 1:])
         if not 0 <= offs[0] < shape[0]:
             raise RunError("выход за границы массива (индекс %d)" % offs[0])
         if rem:                             # частичная индексация -> подсечение

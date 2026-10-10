@@ -24,13 +24,14 @@
 void main()
 {
         //Слоты модулей
+        unsigned char _5050_0 = 0;
         unsigned char _5050_1 = 1;              //ADAM-5050 в 1-ом слоте
         unsigned char _5024 = 2;                //ADAM-5024 во 2-ом слоте
 
         //Каналы цифровых устройств
         unsigned char Stand_by_CH = 4;          //кнопка Stand_by (вход)
         unsigned char Place_2_1_CH = 10;        //верхний датчик положения груза
-        unsigned char Place_2_3_CH = 11;        //нижний датчик положения груза
+        unsigned char Place_2_3_CH = 10;        //нижний датчик положения груза
 
         //Канал аналогового выхода, к которому подключён 2-ой мотор
         unsigned char Motor_2_CH = 1;
@@ -79,7 +80,7 @@ void main()
         //---- 4. Жду нижний датчик Place_2_3 и останавливаюсь -------------------
         while(Bottom == 0)
         {
-                Get5050(_5050_1, Place_2_3_CH, ABit, &Bottom);
+                Get5050(_5050_0, Place_2_3_CH, ABit, &Bottom);
                 ADAMdelay(20);
         }
 
