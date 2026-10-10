@@ -1,0 +1,1523 @@
+  loc_00429310: push ebp
+  loc_00429311: mov ebp, esp
+  loc_00429313: sub esp, 00000008h
+  loc_00429316: push 00402516h ; __vbaExceptHandler
+  loc_0042931B: mov eax, fs:[00000000h]
+  loc_00429321: push eax
+  loc_00429322: mov fs:[00000000h], esp
+  loc_00429329: sub esp, 000000B4h
+  loc_0042932F: push ebx
+  loc_00429330: push esi
+  loc_00429331: push edi
+  loc_00429332: mov var_8, esp
+  loc_00429335: mov var_4, 00401630h
+  loc_0042933C: mov esi, arg_8
+  loc_0042933F: push 00000001h
+  loc_00429341: xor edi, edi
+  loc_00429343: mov eax, [esi]
+  loc_00429345: mov var_20, edi
+  loc_00429348: push eax
+  loc_00429349: push 0040A6FCh ; "*"
+  loc_0042934E: push edi
+  loc_0042934F: mov var_2C, edi
+  loc_00429352: mov var_34, edi
+  loc_00429355: mov var_3C, edi
+  loc_00429358: mov var_4C, edi
+  loc_0042935B: mov var_5C, edi
+  loc_0042935E: mov var_6C, edi
+  loc_00429361: mov var_7C, edi
+  loc_00429364: mov var_9C, edi
+  loc_0042936A: call [004011B0h] ; __vbaInStr
+  loc_00429370: mov ecx, eax
+  loc_00429372: call [00401114h] ; __vbaI2I4
+  loc_00429378: xor ecx, ecx
+  loc_0042937A: cmp ax, di
+  loc_0042937D: setg cl
+  loc_00429380: neg ecx
+  loc_00429382: mov var_28, eax
+  loc_00429385: mov eax, ecx
+  loc_00429387: cmp ax, di
+  loc_0042938A: jz 00429545h
+  loc_00429390: mov ax, var_28
+  loc_00429394: mov ebx, [004010E4h] ; rtcMidCharVar
+  loc_0042939A: add ax, 0001h
+  loc_0042939E: lea edx, var_4C
+  loc_004293A1: jo 0042AA36h
+  loc_004293A7: movsx ecx, ax
+  loc_004293AA: push edx
+  loc_004293AB: lea edx, var_7C
+  loc_004293AE: push ecx
+  loc_004293AF: lea eax, var_5C
+  loc_004293B2: push edx
+  loc_004293B3: push eax
+  loc_004293B4: mov var_44, 80020004h
+  loc_004293BB: mov var_4C, 0000000Ah
+  loc_004293C2: mov var_74, esi
+  loc_004293C5: mov var_7C, 00004008h
+  loc_004293CC: call ebx
+  loc_004293CE: lea ecx, var_5C
+  loc_004293D1: push ecx
+  loc_004293D2: call [00401038h] ; __vbaStrVarMove
+  loc_004293D8: mov edi, [00401224h] ; __vbaStrMove
+  loc_004293DE: mov edx, eax
+  loc_004293E0: lea ecx, var_34
+  loc_004293E3: call edi
+  loc_004293E5: lea edx, var_5C
+  loc_004293E8: lea eax, var_4C
+  loc_004293EB: push edx
+  loc_004293EC: push eax
+  loc_004293ED: push 00000002h
+  loc_004293EF: call [00401040h] ; __vbaFreeVarList
+  loc_004293F5: movsx edx, var_28
+  loc_004293F9: add esp, 0000000Ch
+  loc_004293FC: lea ecx, var_4C
+  loc_004293FF: lea eax, var_7C
+  loc_00429402: mov var_44, 80020004h
+  loc_00429409: push ecx
+  loc_0042940A: push edx
+  loc_0042940B: lea ecx, var_5C
+  loc_0042940E: push eax
+  loc_0042940F: push ecx
+  loc_00429410: mov var_4C, 0000000Ah
+  loc_00429417: mov var_74, esi
+  loc_0042941A: mov var_7C, 00004008h
+  loc_00429421: call ebx
+  loc_00429423: mov edx, var_34
+  loc_00429426: push 00000000h
+  loc_00429428: push FFFFFFFFh
+  loc_0042942A: push 00000001h
+  loc_0042942C: lea eax, var_5C
+  loc_0042942F: push edx
+  loc_00429430: lea ecx, var_3C
+  loc_00429433: push eax
+  loc_00429434: push ecx
+  loc_00429435: call [00401190h] ; __vbaStrVarVal
+  loc_0042943B: mov edx, [esi]
+  loc_0042943D: push eax
+  loc_0042943E: push edx
+  loc_0042943F: call [00401158h] ; rtcReplace
+  loc_00429445: mov edx, eax
+  loc_00429447: mov ecx, esi
+  loc_00429449: call edi
+  loc_0042944B: lea ecx, var_3C
+  loc_0042944E: call [00401254h] ; __vbaFreeStr
+  loc_00429454: lea eax, var_5C
+  loc_00429457: lea ecx, var_4C
+  loc_0042945A: push eax
+  loc_0042945B: push ecx
+  loc_0042945C: push 00000002h
+  loc_0042945E: call [00401040h] ; __vbaFreeVarList
+  loc_00429464: mov edx, [esi]
+  loc_00429466: add esp, 0000000Ch
+  loc_00429469: push 00000001h
+  loc_0042946B: push edx
+  loc_0042946C: push 0040ADB8h ; "FILE "
+  loc_00429471: push 00000000h
+  loc_00429473: call [004011B0h] ; __vbaInStr
+  loc_00429479: test eax, eax
+  loc_0042947B: jnz 00429551h
+  loc_00429481: mov eax, var_34
+  loc_00429484: push 00000001h
+  loc_00429486: push eax
+  loc_00429487: push 0040A980h
+  loc_0042948C: push 00000000h
+  loc_0042948E: call [004011B0h] ; __vbaInStr
+  loc_00429494: mov ecx, eax
+  loc_00429496: call [00401114h] ; __vbaI2I4
+  loc_0042949C: sub ax, 0001h
+  loc_004294A0: lea ecx, var_34
+  loc_004294A3: jo 0042AA36h
+  loc_004294A9: lea edx, var_4C
+  loc_004294AC: mov var_44, ax
+  loc_004294B0: mov var_74, ecx
+  loc_004294B3: push edx
+  loc_004294B4: lea eax, var_7C
+  loc_004294B7: push 00000001h
+  loc_004294B9: lea ecx, var_5C
+  loc_004294BC: push eax
+  loc_004294BD: push ecx
+  loc_004294BE: mov var_4C, 00000002h
+  loc_004294C5: mov var_7C, 00004008h
+  loc_004294CC: call ebx
+  loc_004294CE: movsx eax, [004480B8h]
+  loc_004294D5: cmp eax, 00000101h
+  loc_004294DA: mov var_A0, eax
+  loc_004294E0: jb 004294E8h
+  loc_004294E2: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_004294E8: lea edx, var_5C
+  loc_004294EB: push edx
+  loc_004294EC: call [00401038h] ; __vbaStrVarMove
+  loc_004294F2: mov edx, eax
+  loc_004294F4: lea ecx, var_3C
+  loc_004294F7: call edi
+  loc_004294F9: mov ecx, var_A0
+  loc_004294FF: mov edx, eax
+  loc_00429501: mov eax, [004480D0h]
+  loc_00429506: lea ecx, [eax+ecx*4]
+  loc_00429509: call [004011CCh] ; __vbaStrCopy
+  loc_0042950F: lea ecx, var_3C
+  loc_00429512: call [00401254h] ; __vbaFreeStr
+  loc_00429518: lea edx, var_5C
+  loc_0042951B: lea eax, var_4C
+  loc_0042951E: push edx
+  loc_0042951F: push eax
+  loc_00429520: push 00000002h
+  loc_00429522: call [00401040h] ; __vbaFreeVarList
+  loc_00429528: mov cx, [004480B8h]
+  loc_0042952F: add esp, 0000000Ch
+  loc_00429532: add cx, 0001h
+  loc_00429536: jo 0042AA36h
+  loc_0042953C: mov [004480B8h], cx
+  loc_00429543: jmp 00429551h
+  loc_00429545: mov edi, [00401224h] ; __vbaStrMove
+  loc_0042954B: mov ebx, [004010E4h] ; rtcMidCharVar
+  loc_00429551: lea edx, var_7C
+  loc_00429554: lea ecx, var_20
+  loc_00429557: mov var_24, 00000000h
+  loc_0042955E: mov var_74, 00000001h
+  loc_00429565: mov var_7C, 00000002h
+  loc_0042956C: call [00401020h] ; __vbaVarMove
+  loc_00429572: lea edx, var_4C
+  loc_00429575: lea eax, var_20
+  loc_00429578: push edx
+  loc_00429579: push eax
+  loc_0042957A: mov var_44, 00000003h
+  loc_00429581: mov var_4C, 00000002h
+  loc_00429588: mov var_74, esi
+  loc_0042958B: mov var_7C, 00004008h
+  loc_00429592: call [004011F0h] ; __vbaI4Var
+  loc_00429598: lea ecx, var_7C
+  loc_0042959B: push eax
+  loc_0042959C: lea edx, var_5C
+  loc_0042959F: push ecx
+  loc_004295A0: push edx
+  loc_004295A1: call ebx
+  loc_004295A3: lea eax, var_5C
+  loc_004295A6: lea ecx, var_9C
+  loc_004295AC: push eax
+  loc_004295AD: push ecx
+  loc_004295AE: mov var_94, 0040ADE8h ; "int"
+  loc_004295B8: mov var_9C, 00008008h
+  loc_004295C2: call [00401108h] ; __vbaVarTstEq
+  loc_004295C8: mov var_A0, ax
+  loc_004295CF: lea edx, var_5C
+  loc_004295D2: lea eax, var_4C
+  loc_004295D5: push edx
+  loc_004295D6: push eax
+  loc_004295D7: push 00000002h
+  loc_004295D9: call [00401040h] ; __vbaFreeVarList
+  loc_004295DF: add esp, 0000000Ch
+  loc_004295E2: cmp var_A0, 0000h
+  loc_004295EA: jz 00429679h
+  loc_004295F0: lea ecx, var_4C
+  loc_004295F3: mov var_2C, 00000001h
+  loc_004295FA: push ecx
+  loc_004295FB: mov var_24, FFFFFFFFh
+  loc_00429602: mov var_44, 80020004h
+  loc_00429609: mov var_4C, 0000000Ah
+  loc_00429610: mov var_74, esi
+  loc_00429613: mov var_7C, 00004008h
+  loc_0042961A: push 00000004h
+  loc_0042961C: lea edx, var_7C
+  loc_0042961F: lea eax, var_5C
+  loc_00429622: push edx
+  loc_00429623: push eax
+  loc_00429624: call ebx
+  loc_00429626: lea ecx, var_5C
+  loc_00429629: push ecx
+  loc_0042962A: call [00401038h] ; __vbaStrVarMove
+  loc_00429630: mov edx, eax
+  loc_00429632: mov ecx, esi
+  loc_00429634: call edi
+  loc_00429636: lea edx, var_5C
+  loc_00429639: lea eax, var_4C
+  loc_0042963C: push edx
+  loc_0042963D: push eax
+  loc_0042963E: push 00000002h
+  loc_00429640: call [00401040h] ; __vbaFreeVarList
+  loc_00429646: add esp, 0000000Ch
+  loc_00429649: push 00000000h
+  loc_0042964B: push FFFFFFFFh
+  loc_0042964D: push 00000001h
+  loc_0042964F: push 00409B4Ch
+  loc_00429654: mov ecx, [esi]
+  loc_00429656: push 0040AB50h
+  loc_0042965B: push ecx
+  loc_0042965C: call [00401158h] ; rtcReplace
+  loc_00429662: mov edx, eax
+  loc_00429664: mov ecx, esi
+  loc_00429666: call edi
+  loc_00429668: push esi
+  loc_00429669: call 004220A0h
+  loc_0042966E: mov edx, eax
+  loc_00429670: mov ecx, esi
+  loc_00429672: call edi
+  loc_00429674: jmp 00429E09h
+  loc_00429679: lea edx, var_4C
+  loc_0042967C: lea eax, var_20
+  loc_0042967F: push edx
+  loc_00429680: push eax
+  loc_00429681: mov var_44, 0000000Ch
+  loc_00429688: mov var_4C, 00000002h
+  loc_0042968F: mov var_74, esi
+  loc_00429692: mov var_7C, 00004008h
+  loc_00429699: call [004011F0h] ; __vbaI4Var
+  loc_0042969F: lea ecx, var_7C
+  loc_004296A2: push eax
+  loc_004296A3: lea edx, var_5C
+  loc_004296A6: push ecx
+  loc_004296A7: push edx
+  loc_004296A8: call ebx
+  loc_004296AA: lea eax, var_5C
+  loc_004296AD: lea ecx, var_9C
+  loc_004296B3: push eax
+  loc_004296B4: push ecx
+  loc_004296B5: mov var_94, 0040ADF4h ; "unsigned int"
+  loc_004296BF: mov var_9C, 00008008h
+  loc_004296C9: call [00401108h] ; __vbaVarTstEq
+  loc_004296CF: mov var_A0, ax
+  loc_004296D6: lea edx, var_5C
+  loc_004296D9: lea eax, var_4C
+  loc_004296DC: push edx
+  loc_004296DD: push eax
+  loc_004296DE: push 00000002h
+  loc_004296E0: call [00401040h] ; __vbaFreeVarList
+  loc_004296E6: add esp, 0000000Ch
+  loc_004296E9: cmp var_A0, 0000h
+  loc_004296F1: jz 00429724h
+  loc_004296F3: lea ecx, var_4C
+  loc_004296F6: mov var_2C, 00000001h
+  loc_004296FD: push ecx
+  loc_004296FE: mov var_24, FFFFFFFFh
+  loc_00429705: mov var_44, 80020004h
+  loc_0042970C: mov var_4C, 0000000Ah
+  loc_00429713: mov var_74, esi
+  loc_00429716: mov var_7C, 00004008h
+  loc_0042971D: push 0000000Dh
+  loc_0042971F: jmp 0042961Ch
+  loc_00429724: lea edx, var_4C
+  loc_00429727: lea eax, var_20
+  loc_0042972A: push edx
+  loc_0042972B: push eax
+  loc_0042972C: mov var_44, 00000009h
+  loc_00429733: mov var_4C, 00000002h
+  loc_0042973A: mov var_74, esi
+  loc_0042973D: mov var_7C, 00004008h
+  loc_00429744: call [004011F0h] ; __vbaI4Var
+  loc_0042974A: lea ecx, var_7C
+  loc_0042974D: push eax
+  loc_0042974E: lea edx, var_5C
+  loc_00429751: push ecx
+  loc_00429752: push edx
+  loc_00429753: call ebx
+  loc_00429755: lea eax, var_5C
+  loc_00429758: lea ecx, var_9C
+  loc_0042975E: push eax
+  loc_0042975F: push ecx
+  loc_00429760: mov var_94, 0040AE14h ; "short int"
+  loc_0042976A: mov var_9C, 00008008h
+  loc_00429774: call [00401108h] ; __vbaVarTstEq
+  loc_0042977A: mov var_A0, ax
+  loc_00429781: lea edx, var_5C
+  loc_00429784: lea eax, var_4C
+  loc_00429787: push edx
+  loc_00429788: push eax
+  loc_00429789: push 00000002h
+  loc_0042978B: call [00401040h] ; __vbaFreeVarList
+  loc_00429791: add esp, 0000000Ch
+  loc_00429794: cmp var_A0, 0000h
+  loc_0042979C: jz 004297CFh
+  loc_0042979E: lea ecx, var_4C
+  loc_004297A1: mov var_2C, 00000001h
+  loc_004297A8: push ecx
+  loc_004297A9: mov var_24, FFFFFFFFh
+  loc_004297B0: mov var_44, 80020004h
+  loc_004297B7: mov var_4C, 0000000Ah
+  loc_004297BE: mov var_74, esi
+  loc_004297C1: mov var_7C, 00004008h
+  loc_004297C8: push 0000000Ah
+  loc_004297CA: jmp 0042961Ch
+  loc_004297CF: lea edx, var_4C
+  loc_004297D2: lea eax, var_20
+  loc_004297D5: push edx
+  loc_004297D6: push eax
+  loc_004297D7: mov var_44, 00000004h
+  loc_004297DE: mov var_4C, 00000002h
+  loc_004297E5: mov var_74, esi
+  loc_004297E8: mov var_7C, 00004008h
+  loc_004297EF: call [004011F0h] ; __vbaI4Var
+  loc_004297F5: lea ecx, var_7C
+  loc_004297F8: push eax
+  loc_004297F9: lea edx, var_5C
+  loc_004297FC: push ecx
+  loc_004297FD: push edx
+  loc_004297FE: call ebx
+  loc_00429800: lea eax, var_5C
+  loc_00429803: lea ecx, var_9C
+  loc_00429809: push eax
+  loc_0042980A: push ecx
+  loc_0042980B: mov var_94, 0040AE2Ch ; "char"
+  loc_00429815: mov var_9C, 00008008h
+  loc_0042981F: call [00401108h] ; __vbaVarTstEq
+  loc_00429825: mov var_A0, ax
+  loc_0042982C: lea edx, var_5C
+  loc_0042982F: lea eax, var_4C
+  loc_00429832: push edx
+  loc_00429833: push eax
+  loc_00429834: push 00000002h
+  loc_00429836: call [00401040h] ; __vbaFreeVarList
+  loc_0042983C: add esp, 0000000Ch
+  loc_0042983F: cmp var_A0, 0000h
+  loc_00429847: jz 004298B2h
+  loc_00429849: lea ecx, var_4C
+  loc_0042984C: lea edx, var_7C
+  loc_0042984F: push ecx
+  loc_00429850: push 00000005h
+  loc_00429852: lea eax, var_5C
+  loc_00429855: push edx
+  loc_00429856: push eax
+  loc_00429857: mov var_2C, 00000004h
+  loc_0042985E: mov var_24, FFFFFFFFh
+  loc_00429865: mov var_44, 80020004h
+  loc_0042986C: mov var_4C, 0000000Ah
+  loc_00429873: mov var_74, esi
+  loc_00429876: mov var_7C, 00004008h
+  loc_0042987D: call ebx
+  loc_0042987F: lea ecx, var_5C
+  loc_00429882: push ecx
+  loc_00429883: call [00401038h] ; __vbaStrVarMove
+  loc_00429889: mov edx, eax
+  loc_0042988B: mov ecx, esi
+  loc_0042988D: call edi
+  loc_0042988F: lea edx, var_5C
+  loc_00429892: lea eax, var_4C
+  loc_00429895: push edx
+  loc_00429896: push eax
+  loc_00429897: push 00000002h
+  loc_00429899: call [00401040h] ; __vbaFreeVarList
+  loc_0042989F: add esp, 0000000Ch
+  loc_004298A2: push 00000000h
+  loc_004298A4: push FFFFFFFFh
+  loc_004298A6: push 00000001h
+  loc_004298A8: push 0040A908h
+  loc_004298AD: jmp 00429654h
+  loc_004298B2: lea edx, var_4C
+  loc_004298B5: lea eax, var_20
+  loc_004298B8: push edx
+  loc_004298B9: push eax
+  loc_004298BA: mov var_44, 0000000Dh
+  loc_004298C1: mov var_4C, 00000002h
+  loc_004298C8: mov var_74, esi
+  loc_004298CB: mov var_7C, 00004008h
+  loc_004298D2: call [004011F0h] ; __vbaI4Var
+  loc_004298D8: lea ecx, var_7C
+  loc_004298DB: push eax
+  loc_004298DC: lea edx, var_5C
+  loc_004298DF: push ecx
+  loc_004298E0: push edx
+  loc_004298E1: call ebx
+  loc_004298E3: lea eax, var_5C
+  loc_004298E6: lea ecx, var_9C
+  loc_004298EC: push eax
+  loc_004298ED: push ecx
+  loc_004298EE: mov var_94, 0040AE48h ; "unsigned char"
+  loc_004298F8: mov var_9C, 00008008h
+  loc_00429902: call [00401108h] ; __vbaVarTstEq
+  loc_00429908: mov var_A0, ax
+  loc_0042990F: lea edx, var_5C
+  loc_00429912: lea eax, var_4C
+  loc_00429915: push edx
+  loc_00429916: push eax
+  loc_00429917: push 00000002h
+  loc_00429919: call [00401040h] ; __vbaFreeVarList
+  loc_0042991F: add esp, 0000000Ch
+  loc_00429922: cmp var_A0, 0000h
+  loc_0042992A: jz 0042995Dh
+  loc_0042992C: lea ecx, var_4C
+  loc_0042992F: mov var_2C, 00000001h
+  loc_00429936: push ecx
+  loc_00429937: mov var_24, FFFFFFFFh
+  loc_0042993E: mov var_44, 80020004h
+  loc_00429945: mov var_4C, 0000000Ah
+  loc_0042994C: mov var_74, esi
+  loc_0042994F: mov var_7C, 00004008h
+  loc_00429956: push 0000000Eh
+  loc_00429958: jmp 0042961Ch
+  loc_0042995D: lea edx, var_4C
+  loc_00429960: lea eax, var_20
+  loc_00429963: push edx
+  loc_00429964: push eax
+  loc_00429965: mov var_44, 00000004h
+  loc_0042996C: mov var_4C, 00000002h
+  loc_00429973: mov var_74, esi
+  loc_00429976: mov var_7C, 00004008h
+  loc_0042997D: call [004011F0h] ; __vbaI4Var
+  loc_00429983: lea ecx, var_7C
+  loc_00429986: push eax
+  loc_00429987: lea edx, var_5C
+  loc_0042998A: push ecx
+  loc_0042998B: push edx
+  loc_0042998C: call ebx
+  loc_0042998E: lea eax, var_5C
+  loc_00429991: lea ecx, var_9C
+  loc_00429997: push eax
+  loc_00429998: push ecx
+  loc_00429999: mov var_94, 0040AE68h ; "enum"
+  loc_004299A3: mov var_9C, 00008008h
+  loc_004299AD: call [00401108h] ; __vbaVarTstEq
+  loc_004299B3: mov var_A0, ax
+  loc_004299BA: lea edx, var_5C
+  loc_004299BD: lea eax, var_4C
+  loc_004299C0: push edx
+  loc_004299C1: push eax
+  loc_004299C2: push 00000002h
+  loc_004299C4: call [00401040h] ; __vbaFreeVarList
+  loc_004299CA: add esp, 0000000Ch
+  loc_004299CD: cmp var_A0, 0000h
+  loc_004299D5: jz 00429A17h
+  loc_004299D7: movsx eax, [00448028h]
+  loc_004299DE: cmp eax, 00000401h
+  loc_004299E3: mov var_A0, eax
+  loc_004299E9: jb 004299F1h
+  loc_004299EB: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_004299F1: mov ecx, 00000001h
+  loc_004299F6: call [00401138h] ; __vbaUI1I2
+  loc_004299FC: mov ecx, var_A0
+  loc_00429A02: lea edx, [ecx+ecx*4]
+  loc_00429A05: lea ecx, [ecx+edx*2]
+  loc_00429A08: mov edx, [004480ECh]
+  loc_00429A0E: mov [edx+ecx*4+00000004h], al
+  loc_00429A12: jmp 00429E02h
+  loc_00429A17: lea eax, var_4C
+  loc_00429A1A: lea ecx, var_20
+  loc_00429A1D: push eax
+  loc_00429A1E: push ecx
+  loc_00429A1F: mov var_44, 00000004h
+  loc_00429A26: mov var_4C, 00000002h
+  loc_00429A2D: mov var_74, esi
+  loc_00429A30: mov var_7C, 00004008h
+  loc_00429A37: call [004011F0h] ; __vbaI4Var
+  loc_00429A3D: push eax
+  loc_00429A3E: lea edx, var_7C
+  loc_00429A41: lea eax, var_5C
+  loc_00429A44: push edx
+  loc_00429A45: push eax
+  loc_00429A46: call ebx
+  loc_00429A48: lea ecx, var_5C
+  loc_00429A4B: lea edx, var_9C
+  loc_00429A51: push ecx
+  loc_00429A52: push edx
+  loc_00429A53: mov var_94, 0040AE78h ; "long"
+  loc_00429A5D: mov var_9C, 00008008h
+  loc_00429A67: call [00401108h] ; __vbaVarTstEq
+  loc_00429A6D: mov var_A0, ax
+  loc_00429A74: lea eax, var_5C
+  loc_00429A77: lea ecx, var_4C
+  loc_00429A7A: push eax
+  loc_00429A7B: push ecx
+  loc_00429A7C: push 00000002h
+  loc_00429A7E: call [00401040h] ; __vbaFreeVarList
+  loc_00429A84: add esp, 0000000Ch
+  loc_00429A87: cmp var_A0, 0000h
+  loc_00429A8F: jz 00429AC2h
+  loc_00429A91: lea edx, var_4C
+  loc_00429A94: mov var_2C, 00000001h
+  loc_00429A9B: push edx
+  loc_00429A9C: mov var_24, FFFFFFFFh
+  loc_00429AA3: mov var_44, 80020004h
+  loc_00429AAA: mov var_4C, 0000000Ah
+  loc_00429AB1: mov var_74, esi
+  loc_00429AB4: mov var_7C, 00004008h
+  loc_00429ABB: push 0000000Fh
+  loc_00429ABD: jmp 00429D3Ch
+  loc_00429AC2: lea eax, var_4C
+  loc_00429AC5: lea ecx, var_20
+  loc_00429AC8: push eax
+  loc_00429AC9: push ecx
+  loc_00429ACA: mov var_44, 0000000Dh
+  loc_00429AD1: mov var_4C, 00000002h
+  loc_00429AD8: mov var_74, esi
+  loc_00429ADB: mov var_7C, 00004008h
+  loc_00429AE2: call [004011F0h] ; __vbaI4Var
+  loc_00429AE8: push eax
+  loc_00429AE9: lea edx, var_7C
+  loc_00429AEC: lea eax, var_5C
+  loc_00429AEF: push edx
+  loc_00429AF0: push eax
+  loc_00429AF1: call ebx
+  loc_00429AF3: lea ecx, var_5C
+  loc_00429AF6: lea edx, var_9C
+  loc_00429AFC: push ecx
+  loc_00429AFD: push edx
+  loc_00429AFE: mov var_94, 0040AE88h ; "unsigned long"
+  loc_00429B08: mov var_9C, 00008008h
+  loc_00429B12: call [00401108h] ; __vbaVarTstEq
+  loc_00429B18: mov var_A0, ax
+  loc_00429B1F: lea eax, var_5C
+  loc_00429B22: lea ecx, var_4C
+  loc_00429B25: push eax
+  loc_00429B26: push ecx
+  loc_00429B27: push 00000002h
+  loc_00429B29: call [00401040h] ; __vbaFreeVarList
+  loc_00429B2F: add esp, 0000000Ch
+  loc_00429B32: cmp var_A0, 0000h
+  loc_00429B3A: jz 00429B6Dh
+  loc_00429B3C: lea edx, var_4C
+  loc_00429B3F: mov var_2C, 00000001h
+  loc_00429B46: push edx
+  loc_00429B47: mov var_24, FFFFFFFFh
+  loc_00429B4E: mov var_44, 80020004h
+  loc_00429B55: mov var_4C, 0000000Ah
+  loc_00429B5C: mov var_74, esi
+  loc_00429B5F: mov var_7C, 00004008h
+  loc_00429B66: push 0000000Eh
+  loc_00429B68: jmp 00429D3Ch
+  loc_00429B6D: lea eax, var_4C
+  loc_00429B70: lea ecx, var_20
+  loc_00429B73: push eax
+  loc_00429B74: push ecx
+  loc_00429B75: mov var_44, 00000005h
+  loc_00429B7C: mov var_4C, 00000002h
+  loc_00429B83: mov var_74, esi
+  loc_00429B86: mov var_7C, 00004008h
+  loc_00429B8D: call [004011F0h] ; __vbaI4Var
+  loc_00429B93: push eax
+  loc_00429B94: lea edx, var_7C
+  loc_00429B97: lea eax, var_5C
+  loc_00429B9A: push edx
+  loc_00429B9B: push eax
+  loc_00429B9C: call ebx
+  loc_00429B9E: lea ecx, var_5C
+  loc_00429BA1: lea edx, var_9C
+  loc_00429BA7: push ecx
+  loc_00429BA8: push edx
+  loc_00429BA9: mov var_94, 0040AEA8h ; "float"
+  loc_00429BB3: mov var_9C, 00008008h
+  loc_00429BBD: call [00401108h] ; __vbaVarTstEq
+  loc_00429BC3: mov var_A0, ax
+  loc_00429BCA: lea eax, var_5C
+  loc_00429BCD: lea ecx, var_4C
+  loc_00429BD0: push eax
+  loc_00429BD1: push ecx
+  loc_00429BD2: push 00000002h
+  loc_00429BD4: call [00401040h] ; __vbaFreeVarList
+  loc_00429BDA: add esp, 0000000Ch
+  loc_00429BDD: cmp var_A0, 0000h
+  loc_00429BE5: jz 00429C18h
+  loc_00429BE7: lea edx, var_4C
+  loc_00429BEA: mov var_2C, 00000001h
+  loc_00429BF1: push edx
+  loc_00429BF2: mov var_24, FFFFFFFFh
+  loc_00429BF9: mov var_44, 80020004h
+  loc_00429C00: mov var_4C, 0000000Ah
+  loc_00429C07: mov var_74, esi
+  loc_00429C0A: mov var_7C, 00004008h
+  loc_00429C11: push 00000006h
+  loc_00429C13: jmp 00429D3Ch
+  loc_00429C18: lea eax, var_4C
+  loc_00429C1B: lea ecx, var_20
+  loc_00429C1E: push eax
+  loc_00429C1F: push ecx
+  loc_00429C20: mov var_44, 00000006h
+  loc_00429C27: mov var_4C, 00000002h
+  loc_00429C2E: mov var_74, esi
+  loc_00429C31: mov var_7C, 00004008h
+  loc_00429C38: call [004011F0h] ; __vbaI4Var
+  loc_00429C3E: push eax
+  loc_00429C3F: lea edx, var_7C
+  loc_00429C42: lea eax, var_5C
+  loc_00429C45: push edx
+  loc_00429C46: push eax
+  loc_00429C47: call ebx
+  loc_00429C49: lea ecx, var_5C
+  loc_00429C4C: lea edx, var_9C
+  loc_00429C52: push ecx
+  loc_00429C53: push edx
+  loc_00429C54: mov var_94, 0040AEB8h ; "double"
+  loc_00429C5E: mov var_9C, 00008008h
+  loc_00429C68: call [00401108h] ; __vbaVarTstEq
+  loc_00429C6E: mov var_A0, ax
+  loc_00429C75: lea eax, var_5C
+  loc_00429C78: lea ecx, var_4C
+  loc_00429C7B: push eax
+  loc_00429C7C: push ecx
+  loc_00429C7D: push 00000002h
+  loc_00429C7F: call [00401040h] ; __vbaFreeVarList
+  loc_00429C85: add esp, 0000000Ch
+  loc_00429C88: cmp var_A0, 0000h
+  loc_00429C90: jnz 00429BE7h
+  loc_00429C96: lea eax, var_4C
+  loc_00429C99: lea ecx, var_20
+  loc_00429C9C: push eax
+  loc_00429C9D: push ecx
+  loc_00429C9E: mov var_44, 0000000Bh
+  loc_00429CA5: mov var_4C, 00000002h
+  loc_00429CAC: mov var_74, esi
+  loc_00429CAF: mov var_7C, 00004008h
+  loc_00429CB6: call [004011F0h] ; __vbaI4Var
+  loc_00429CBC: push eax
+  loc_00429CBD: lea edx, var_7C
+  loc_00429CC0: lea eax, var_5C
+  loc_00429CC3: push edx
+  loc_00429CC4: push eax
+  loc_00429CC5: call ebx
+  loc_00429CC7: lea ecx, var_5C
+  loc_00429CCA: lea edx, var_9C
+  loc_00429CD0: push ecx
+  loc_00429CD1: push edx
+  loc_00429CD2: mov var_94, 0040AECCh ; "long double"
+  loc_00429CDC: mov var_9C, 00008008h
+  loc_00429CE6: call [00401108h] ; __vbaVarTstEq
+  loc_00429CEC: mov var_A0, ax
+  loc_00429CF3: lea eax, var_5C
+  loc_00429CF6: lea ecx, var_4C
+  loc_00429CF9: push eax
+  loc_00429CFA: push ecx
+  loc_00429CFB: push 00000002h
+  loc_00429CFD: call [00401040h] ; __vbaFreeVarList
+  loc_00429D03: add esp, 0000000Ch
+  loc_00429D06: cmp var_A0, 0000h
+  loc_00429D0E: jz 00429D81h
+  loc_00429D10: lea edx, var_4C
+  loc_00429D13: mov var_2C, 00000001h
+  loc_00429D1A: push edx
+  loc_00429D1B: mov var_24, FFFFFFFFh
+  loc_00429D22: mov var_44, 80020004h
+  loc_00429D29: mov var_4C, 0000000Ah
+  loc_00429D30: mov var_74, esi
+  loc_00429D33: mov var_7C, 00004008h
+  loc_00429D3A: push 0000000Ch
+  loc_00429D3C: lea eax, var_7C
+  loc_00429D3F: lea ecx, var_5C
+  loc_00429D42: push eax
+  loc_00429D43: push ecx
+  loc_00429D44: call ebx
+  loc_00429D46: lea edx, var_5C
+  loc_00429D49: push edx
+  loc_00429D4A: call [00401038h] ; __vbaStrVarMove
+  loc_00429D50: mov edx, eax
+  loc_00429D52: mov ecx, esi
+  loc_00429D54: call edi
+  loc_00429D56: lea eax, var_5C
+  loc_00429D59: lea ecx, var_4C
+  loc_00429D5C: push eax
+  loc_00429D5D: push ecx
+  loc_00429D5E: push 00000002h
+  loc_00429D60: call [00401040h] ; __vbaFreeVarList
+  loc_00429D66: mov edx, [esi]
+  loc_00429D68: add esp, 0000000Ch
+  loc_00429D6B: push 00000000h
+  loc_00429D6D: push FFFFFFFFh
+  loc_00429D6F: push 00000001h
+  loc_00429D71: push 00409B4Ch
+  loc_00429D76: push 0040AB50h
+  loc_00429D7B: push edx
+  loc_00429D7C: jmp 0042965Ch
+  loc_00429D81: lea eax, var_4C
+  loc_00429D84: lea ecx, var_20
+  loc_00429D87: push eax
+  loc_00429D88: push ecx
+  loc_00429D89: mov var_44, 00000004h
+  loc_00429D90: mov var_4C, 00000002h
+  loc_00429D97: mov var_74, esi
+  loc_00429D9A: mov var_7C, 00004008h
+  loc_00429DA1: call [004011F0h] ; __vbaI4Var
+  loc_00429DA7: push eax
+  loc_00429DA8: lea edx, var_7C
+  loc_00429DAB: lea eax, var_5C
+  loc_00429DAE: push edx
+  loc_00429DAF: push eax
+  loc_00429DB0: call ebx
+  loc_00429DB2: lea ecx, var_5C
+  loc_00429DB5: lea edx, var_9C
+  loc_00429DBB: push ecx
+  loc_00429DBC: push edx
+  loc_00429DBD: mov var_94, 0040AEE8h ; "FILE"
+  loc_00429DC7: mov var_9C, 00008008h
+  loc_00429DD1: call [00401108h] ; __vbaVarTstEq
+  loc_00429DD7: mov var_A0, ax
+  loc_00429DDE: lea eax, var_5C
+  loc_00429DE1: lea ecx, var_4C
+  loc_00429DE4: push eax
+  loc_00429DE5: push ecx
+  loc_00429DE6: push 00000002h
+  loc_00429DE8: call [00401040h] ; __vbaFreeVarList
+  loc_00429DEE: add esp, 0000000Ch
+  loc_00429DF1: cmp var_A0, 0000h
+  loc_00429DF9: jz 00429E09h
+  loc_00429DFB: mov var_2C, 00000001h
+  loc_00429E02: mov var_24, FFFFFFFFh
+  loc_00429E09: mov ax, [004481CEh]
+  loc_00429E0F: test ax, ax
+  loc_00429E12: jl 00429EB3h
+  loc_00429E18: movsx ebx, ax
+  loc_00429E1B: cmp ebx, 00000101h
+  loc_00429E21: jb 00429E2Fh
+  loc_00429E23: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429E29: mov ax, [004481CEh]
+  loc_00429E2F: movsx eax, ax
+  loc_00429E32: cmp eax, 00000101h
+  loc_00429E37: mov var_A4, eax
+  loc_00429E3D: jb 00429E4Bh
+  loc_00429E3F: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429E45: mov eax, var_A4
+  loc_00429E4B: lea edx, [eax+eax*4]
+  loc_00429E4E: lea ecx, [eax+edx*2]
+  loc_00429E51: mov edx, [00448080h]
+  loc_00429E57: shl ecx, 05h
+  loc_00429E5A: add ecx, eax
+  loc_00429E5C: shl ecx, 04h
+  loc_00429E5F: sub ecx, eax
+  loc_00429E61: movsx eax, [edx+ecx*4+00000006h]
+  loc_00429E66: cmp eax, 00000201h
+  loc_00429E6B: mov var_A8, eax
+  loc_00429E71: jb 00429E79h
+  loc_00429E73: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429E79: mov ecx, var_2C
+  loc_00429E7C: call [00401138h] ; __vbaUI1I2
+  loc_00429E82: lea ecx, [ebx+ebx*4]
+  loc_00429E85: lea edx, [ebx+ecx*2]
+  loc_00429E88: mov ecx, var_A8
+  loc_00429E8E: shl edx, 05h
+  loc_00429E91: add edx, ebx
+  loc_00429E93: shl edx, 04h
+  loc_00429E96: sub edx, ebx
+  loc_00429E98: lea ebx, [ecx+ecx*4]
+  loc_00429E9B: lea ecx, [ecx+ebx*2]
+  loc_00429E9E: mov ebx, [00448080h]
+  loc_00429EA4: lea ecx, [ebx+ecx*4]
+  loc_00429EA7: mov ebx, [004010E4h] ; rtcMidCharVar
+  loc_00429EAD: mov [ecx+edx*4+00000014h], al
+  loc_00429EB1: jmp 00429EECh
+  loc_00429EB3: movsx eax, [00448028h]
+  loc_00429EBA: cmp eax, 00000401h
+  loc_00429EBF: mov var_A0, eax
+  loc_00429EC5: jb 00429ECDh
+  loc_00429EC7: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429ECD: mov ecx, var_2C
+  loc_00429ED0: call [00401138h] ; __vbaUI1I2
+  loc_00429ED6: mov ecx, var_A0
+  loc_00429EDC: lea edx, [ecx+ecx*4]
+  loc_00429EDF: lea ecx, [ecx+edx*2]
+  loc_00429EE2: mov edx, [004480ECh]
+  loc_00429EE8: mov [edx+ecx*4+00000004h], al
+  loc_00429EEC: mov eax, [esi]
+  loc_00429EEE: push 00000001h
+  loc_00429EF0: push eax
+  loc_00429EF1: push 0040A610h
+  loc_00429EF6: push 00000000h
+  loc_00429EF8: call [004011B0h] ; __vbaInStr
+  loc_00429EFE: xor ecx, ecx
+  loc_00429F00: test eax, eax
+  loc_00429F02: mov eax, arg_C
+  loc_00429F05: setle cl
+  loc_00429F08: xor edx, edx
+  loc_00429F0A: cmp [eax], dx
+  loc_00429F0D: setnz dl
+  loc_00429F10: or ecx, edx
+  loc_00429F12: jnz 0042A53Ch
+  loc_00429F18: mov ecx, [esi]
+  loc_00429F1A: push 00000000h
+  loc_00429F1C: push FFFFFFFFh
+  loc_00429F1E: push 00000001h
+  loc_00429F20: push 0040A980h
+  loc_00429F25: push 0040A610h
+  loc_00429F2A: push ecx
+  loc_00429F2B: call [00401158h] ; rtcReplace
+  loc_00429F31: mov edx, eax
+  loc_00429F33: mov ecx, esi
+  loc_00429F35: call edi
+  loc_00429F37: mov edx, [esi]
+  loc_00429F39: push edx
+  loc_00429F3A: push 00409B4Ch
+  loc_00429F3F: call [004010FCh] ; __vbaStrCmp
+  loc_00429F45: test eax, eax
+  loc_00429F47: jz 0042A9E4h
+  loc_00429F4D: mov ax, [004481CEh]
+  loc_00429F53: test ax, ax
+  loc_00429F56: jl 0042A31Ah
+  loc_00429F5C: movsx ebx, ax
+  loc_00429F5F: cmp ebx, 00000101h
+  loc_00429F65: jb 00429F6Dh
+  loc_00429F67: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429F6D: lea eax, [ebx+ebx*4]
+  loc_00429F70: mov edx, [00448080h]
+  loc_00429F76: lea ecx, [ebx+eax*2]
+  loc_00429F79: shl ecx, 05h
+  loc_00429F7C: add ecx, ebx
+  loc_00429F7E: shl ecx, 04h
+  loc_00429F81: sub ecx, ebx
+  loc_00429F83: cmp [edx+ecx*4+00000006h], 0000h
+  loc_00429F89: jnz 00429FC2h
+  loc_00429F8B: movsx ebx, [004481CEh]
+  loc_00429F92: cmp ebx, 00000101h
+  loc_00429F98: jb 00429FA0h
+  loc_00429F9A: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429FA0: lea eax, [ebx+ebx*4]
+  loc_00429FA3: mov edx, [00448080h]
+  loc_00429FA9: lea ecx, [ebx+eax*2]
+  loc_00429FAC: shl ecx, 05h
+  loc_00429FAF: add ecx, ebx
+  loc_00429FB1: shl ecx, 04h
+  loc_00429FB4: sub ecx, ebx
+  loc_00429FB6: mov [edx+ecx*4+00000028h], 0000h
+  loc_00429FBD: jmp 0042A17Dh
+  loc_00429FC2: movsx eax, [004481CEh]
+  loc_00429FC9: cmp eax, 00000101h
+  loc_00429FCE: mov var_AC, eax
+  loc_00429FD4: jb 00429FDCh
+  loc_00429FD6: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429FDC: movsx edi, [004481CEh]
+  loc_00429FE3: cmp edi, 00000101h
+  loc_00429FE9: jb 00429FF1h
+  loc_00429FEB: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_00429FF1: lea eax, [edi+edi*4]
+  loc_00429FF4: mov edx, [00448080h]
+  loc_00429FFA: lea ecx, [edi+eax*2]
+  loc_00429FFD: shl ecx, 05h
+  loc_0042A000: add ecx, edi
+  loc_0042A002: shl ecx, 04h
+  loc_0042A005: sub ecx, edi
+  loc_0042A007: mov ax, [edx+ecx*4+00000006h]
+  loc_0042A00C: sub ax, 0001h
+  loc_0042A010: jo 0042AA36h
+  loc_0042A016: movsx eax, ax
+  loc_0042A019: cmp eax, 00000201h
+  loc_0042A01E: mov var_B4, eax
+  loc_0042A024: jb 0042A02Ch
+  loc_0042A026: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A02C: movsx ebx, [004481CEh]
+  loc_0042A033: cmp ebx, 00000101h
+  loc_0042A039: jb 0042A041h
+  loc_0042A03B: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A041: movsx edi, [004481CEh]
+  loc_0042A048: cmp edi, 00000101h
+  loc_0042A04E: jb 0042A056h
+  loc_0042A050: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A056: lea ecx, [edi+edi*4]
+  loc_0042A059: mov eax, [00448080h]
+  loc_0042A05E: lea edx, [edi+ecx*2]
+  loc_0042A061: shl edx, 05h
+  loc_0042A064: add edx, edi
+  loc_0042A066: shl edx, 04h
+  loc_0042A069: sub edx, edi
+  loc_0042A06B: mov cx, [eax+edx*4+00000006h]
+  loc_0042A070: sub cx, 0001h
+  loc_0042A074: jo 0042AA36h
+  loc_0042A07A: movsx eax, cx
+  loc_0042A07D: cmp eax, 00000201h
+  loc_0042A082: mov var_C0, eax
+  loc_0042A088: jb 0042A090h
+  loc_0042A08A: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A090: movsx eax, [004481CEh]
+  loc_0042A097: cmp eax, 00000101h
+  loc_0042A09C: mov var_A0, eax
+  loc_0042A0A2: jb 0042A0AAh
+  loc_0042A0A4: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A0AA: movsx edi, [004481CEh]
+  loc_0042A0B1: cmp edi, 00000101h
+  loc_0042A0B7: jb 0042A0BFh
+  loc_0042A0B9: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A0BF: lea edx, [edi+edi*4]
+  loc_0042A0C2: mov ecx, [00448080h]
+  loc_0042A0C8: lea eax, [edi+edx*2]
+  loc_0042A0CB: shl eax, 05h
+  loc_0042A0CE: add eax, edi
+  loc_0042A0D0: shl eax, 04h
+  loc_0042A0D3: sub eax, edi
+  loc_0042A0D5: movsx eax, [ecx+eax*4+00000006h]
+  loc_0042A0DA: cmp eax, 00000201h
+  loc_0042A0DF: mov var_A8, eax
+  loc_0042A0E5: jb 0042A0EDh
+  loc_0042A0E7: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A0ED: mov eax, var_C0
+  loc_0042A0F3: lea edx, [ebx+ebx*4]
+  loc_0042A0F6: lea ecx, [eax+eax*4]
+  loc_0042A0F9: lea edx, [ebx+edx*2]
+  loc_0042A0FC: shl edx, 05h
+  loc_0042A0FF: lea eax, [eax+ecx*2]
+  loc_0042A102: mov ecx, [00448080h]
+  loc_0042A108: add edx, ebx
+  loc_0042A10A: lea edi, [ecx+eax*4]
+  loc_0042A10D: mov eax, var_AC
+  loc_0042A113: shl edx, 04h
+  loc_0042A116: lea ecx, [eax+eax*4]
+  loc_0042A119: sub edx, ebx
+  loc_0042A11B: lea ebx, [eax+ecx*2]
+  loc_0042A11E: mov dx, [edi+edx*4+0000002Ah]
+  loc_0042A123: shl ebx, 05h
+  loc_0042A126: add ebx, eax
+  loc_0042A128: shl ebx, 04h
+  loc_0042A12B: sub ebx, eax
+  loc_0042A12D: mov eax, var_B4
+  loc_0042A133: lea ecx, [eax+eax*4]
+  loc_0042A136: lea eax, [eax+ecx*2]
+  loc_0042A139: mov ecx, [00448080h]
+  loc_0042A13F: lea eax, [ecx+eax*4]
+  loc_0042A142: add dx, [eax+ebx*4+00000028h]
+  loc_0042A147: mov eax, var_A0
+  loc_0042A14D: lea edi, [eax+eax*4]
+  loc_0042A150: jo 0042AA36h
+  loc_0042A156: lea edi, [eax+edi*2]
+  loc_0042A159: shl edi, 05h
+  loc_0042A15C: add edi, eax
+  loc_0042A15E: shl edi, 04h
+  loc_0042A161: sub edi, eax
+  loc_0042A163: mov eax, var_A8
+  loc_0042A169: lea ebx, [eax+eax*4]
+  loc_0042A16C: lea eax, [eax+ebx*2]
+  loc_0042A16F: lea ecx, [ecx+eax*4]
+  loc_0042A172: mov [ecx+edi*4+00000028h], dx
+  loc_0042A177: mov edi, [00401224h] ; __vbaStrMove
+  loc_0042A17D: movsx ebx, [004481CEh]
+  loc_0042A184: cmp ebx, 00000101h
+  loc_0042A18A: jb 0042A192h
+  loc_0042A18C: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A192: movsx eax, [004481CEh]
+  loc_0042A199: cmp eax, 00000101h
+  loc_0042A19E: mov var_A4, eax
+  loc_0042A1A4: jb 0042A1B2h
+  loc_0042A1A6: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A1AC: mov eax, var_A4
+  loc_0042A1B2: lea edx, [eax+eax*4]
+  loc_0042A1B5: lea ecx, [eax+edx*2]
+  loc_0042A1B8: mov edx, [00448080h]
+  loc_0042A1BE: shl ecx, 05h
+  loc_0042A1C1: add ecx, eax
+  loc_0042A1C3: shl ecx, 04h
+  loc_0042A1C6: sub ecx, eax
+  loc_0042A1C8: movsx eax, [edx+ecx*4+00000006h]
+  loc_0042A1CD: cmp eax, 00000201h
+  loc_0042A1D2: mov var_A8, eax
+  loc_0042A1D8: jb 0042A1E6h
+  loc_0042A1DA: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A1E0: mov eax, var_A8
+  loc_0042A1E6: lea ecx, [ebx+ebx*4]
+  loc_0042A1E9: lea edx, [ebx+ecx*2]
+  loc_0042A1EC: lea ecx, [eax+eax*4]
+  loc_0042A1EF: shl edx, 05h
+  loc_0042A1F2: add edx, ebx
+  loc_0042A1F4: lea eax, [eax+ecx*2]
+  loc_0042A1F7: mov ecx, [00448080h]
+  loc_0042A1FD: shl edx, 04h
+  loc_0042A200: sub edx, ebx
+  loc_0042A202: lea eax, [ecx+eax*4]
+  loc_0042A205: mov [eax+edx*4+0000002Ah], 0001h
+  loc_0042A20C: movsx ebx, [004481CEh]
+  loc_0042A213: cmp ebx, 00000101h
+  loc_0042A219: jb 0042A221h
+  loc_0042A21B: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A221: movsx eax, [004481CEh]
+  loc_0042A228: cmp eax, 00000101h
+  loc_0042A22D: mov var_A4, eax
+  loc_0042A233: jb 0042A241h
+  loc_0042A235: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A23B: mov eax, var_A4
+  loc_0042A241: lea ecx, [eax+eax*4]
+  loc_0042A244: lea edx, [eax+ecx*2]
+  loc_0042A247: shl edx, 05h
+  loc_0042A24A: add edx, eax
+  loc_0042A24C: shl edx, 04h
+  loc_0042A24F: sub edx, eax
+  loc_0042A251: mov eax, [00448080h]
+  loc_0042A256: movsx eax, [eax+edx*4+00000006h]
+  loc_0042A25B: cmp eax, 00000201h
+  loc_0042A260: mov var_A8, eax
+  loc_0042A266: jb 0042A26Eh
+  loc_0042A268: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A26E: mov ecx, var_2C
+  loc_0042A271: call [00401138h] ; __vbaUI1I2
+  loc_0042A277: lea ecx, [ebx+ebx*4]
+  loc_0042A27A: lea edx, [ebx+ecx*2]
+  loc_0042A27D: mov ecx, var_A8
+  loc_0042A283: shl edx, 05h
+  loc_0042A286: add edx, ebx
+  loc_0042A288: shl edx, 04h
+  loc_0042A28B: sub edx, ebx
+  loc_0042A28D: lea ebx, [ecx+ecx*4]
+  loc_0042A290: lea ecx, [ecx+ebx*2]
+  loc_0042A293: mov ebx, [00448080h]
+  loc_0042A299: lea ecx, [ebx+ecx*4]
+  loc_0042A29C: mov [ecx+edx*4+00000014h], al
+  loc_0042A2A0: movsx ebx, [004481CEh]
+  loc_0042A2A7: cmp ebx, 00000101h
+  loc_0042A2AD: jb 0042A2B5h
+  loc_0042A2AF: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A2B5: movsx eax, [004481CEh]
+  loc_0042A2BC: cmp eax, 00000101h
+  loc_0042A2C1: mov var_A0, eax
+  loc_0042A2C7: jb 0042A2D5h
+  loc_0042A2C9: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A2CF: mov eax, var_A0
+  loc_0042A2D5: lea edx, [ebx+ebx*4]
+  loc_0042A2D8: mov ecx, [00448080h]
+  loc_0042A2DE: lea edx, [ebx+edx*2]
+  loc_0042A2E1: shl edx, 05h
+  loc_0042A2E4: add edx, ebx
+  loc_0042A2E6: shl edx, 04h
+  loc_0042A2E9: sub edx, ebx
+  loc_0042A2EB: lea ebx, [eax+eax*4]
+  loc_0042A2EE: mov dx, [ecx+edx*4+00000006h]
+  loc_0042A2F3: lea ebx, [eax+ebx*2]
+  loc_0042A2F6: add dx, 0001h
+  loc_0042A2FA: jo 0042AA36h
+  loc_0042A300: shl ebx, 05h
+  loc_0042A303: add ebx, eax
+  loc_0042A305: shl ebx, 04h
+  loc_0042A308: sub ebx, eax
+  loc_0042A30A: mov [ecx+ebx*4+00000006h], dx
+  loc_0042A30F: mov ebx, [004010E4h] ; rtcMidCharVar
+  loc_0042A315: jmp 0042A478h
+  loc_0042A31A: mov dx, [00448028h]
+  loc_0042A321: test dx, dx
+  loc_0042A324: jnz 0042A334h
+  loc_0042A326: mov eax, [004480ECh]
+  loc_0042A32B: mov [eax+00000018h], dx
+  loc_0042A32F: jmp 0042A3F6h
+  loc_0042A334: mov cx, dx
+  loc_0042A337: sub cx, 0001h
+  loc_0042A33B: jo 0042AA36h
+  loc_0042A341: movsx ecx, cx
+  loc_0042A344: cmp ecx, 00000401h
+  loc_0042A34A: mov var_A4, ecx
+  loc_0042A350: jb 0042A365h
+  loc_0042A352: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A358: mov dx, [00448028h]
+  loc_0042A35F: mov ecx, var_A4
+  loc_0042A365: mov ax, dx
+  loc_0042A368: sub ax, 0001h
+  loc_0042A36C: jo 0042AA36h
+  loc_0042A372: movsx eax, ax
+  loc_0042A375: cmp eax, 00000401h
+  loc_0042A37A: mov var_A8, eax
+  loc_0042A380: jb 0042A39Bh
+  loc_0042A382: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A388: mov dx, [00448028h]
+  loc_0042A38F: mov eax, var_A8
+  loc_0042A395: mov ecx, var_A4
+  loc_0042A39B: movsx edx, dx
+  loc_0042A39E: cmp edx, 00000401h
+  loc_0042A3A4: mov var_A0, edx
+  loc_0042A3AA: jb 0042A3BEh
+  loc_0042A3AC: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A3B2: mov eax, var_A8
+  loc_0042A3B8: mov ecx, var_A4
+  loc_0042A3BE: lea edx, [eax+eax*4]
+  loc_0042A3C1: lea edx, [eax+edx*2]
+  loc_0042A3C4: lea eax, [ecx+ecx*4]
+  loc_0042A3C7: lea ecx, [ecx+eax*2]
+  loc_0042A3CA: mov eax, [004480ECh]
+  loc_0042A3CF: mov dx, [eax+edx*4+0000001Ah]
+  loc_0042A3D4: add dx, [eax+ecx*4+00000018h]
+  loc_0042A3D9: mov eax, var_A0
+  loc_0042A3DF: lea ecx, [eax+eax*4]
+  loc_0042A3E2: jo 0042AA36h
+  loc_0042A3E8: lea eax, [eax+ecx*2]
+  loc_0042A3EB: mov ecx, [004480ECh]
+  loc_0042A3F1: mov [ecx+eax*4+00000018h], dx
+  loc_0042A3F6: movsx eax, [00448028h]
+  loc_0042A3FD: cmp eax, 00000401h
+  loc_0042A402: mov var_A0, eax
+  loc_0042A408: jb 0042A416h
+  loc_0042A40A: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A410: mov eax, var_A0
+  loc_0042A416: mov ecx, [004480ECh]
+  loc_0042A41C: lea edx, [eax+eax*4]
+  loc_0042A41F: lea eax, [eax+edx*2]
+  loc_0042A422: mov [ecx+eax*4+0000001Ah], 0001h
+  loc_0042A429: movsx eax, [00448028h]
+  loc_0042A430: cmp eax, 00000401h
+  loc_0042A435: mov var_A0, eax
+  loc_0042A43B: jb 0042A443h
+  loc_0042A43D: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A443: mov ecx, var_2C
+  loc_0042A446: call [00401138h] ; __vbaUI1I2
+  loc_0042A44C: mov ecx, var_A0
+  loc_0042A452: lea edx, [ecx+ecx*4]
+  loc_0042A455: lea ecx, [ecx+edx*2]
+  loc_0042A458: mov edx, [004480ECh]
+  loc_0042A45E: mov [edx+ecx*4+00000004h], al
+  loc_0042A462: mov ax, [00448028h]
+  loc_0042A468: add ax, 0001h
+  loc_0042A46C: jo 0042AA36h
+  loc_0042A472: mov [00448028h], ax
+  loc_0042A478: mov ecx, [esi]
+  loc_0042A47A: push 00000001h
+  loc_0042A47C: push ecx
+  loc_0042A47D: push 0040A980h
+  loc_0042A482: push 00000000h
+  loc_0042A484: call [004011B0h] ; __vbaInStr
+  loc_0042A48A: mov ecx, eax
+  loc_0042A48C: call [00401114h] ; __vbaI2I4
+  loc_0042A492: movsx edx, ax
+  loc_0042A495: mov var_28, eax
+  loc_0042A498: lea eax, var_7C
+  loc_0042A49B: push edx
+  loc_0042A49C: lea ecx, var_4C
+  loc_0042A49F: push eax
+  loc_0042A4A0: push ecx
+  loc_0042A4A1: mov var_74, esi
+  loc_0042A4A4: mov var_7C, 00004008h
+  loc_0042A4AB: call [00401218h] ; rtcLeftCharVar
+  loc_0042A4B1: lea edx, var_4C
+  loc_0042A4B4: push edx
+  loc_0042A4B5: call [00401038h] ; __vbaStrVarMove
+  loc_0042A4BB: mov edx, eax
+  loc_0042A4BD: lea ecx, var_3C
+  loc_0042A4C0: call edi
+  loc_0042A4C2: lea eax, var_3C
+  loc_0042A4C5: push eax
+  loc_0042A4C6: call 00426230h
+  loc_0042A4CB: lea ecx, var_3C
+  loc_0042A4CE: call [00401254h] ; __vbaFreeStr
+  loc_0042A4D4: lea ecx, var_4C
+  loc_0042A4D7: call [0040102Ch] ; __vbaFreeVar
+  loc_0042A4DD: mov eax, var_28
+  loc_0042A4E0: lea ecx, var_4C
+  loc_0042A4E3: add ax, 0001h
+  loc_0042A4E7: push ecx
+  loc_0042A4E8: jo 0042AA36h
+  loc_0042A4EE: movsx edx, ax
+  loc_0042A4F1: lea eax, var_7C
+  loc_0042A4F4: push edx
+  loc_0042A4F5: lea ecx, var_5C
+  loc_0042A4F8: push eax
+  loc_0042A4F9: push ecx
+  loc_0042A4FA: mov var_44, 80020004h
+  loc_0042A501: mov var_4C, 0000000Ah
+  loc_0042A508: mov var_74, esi
+  loc_0042A50B: mov var_7C, 00004008h
+  loc_0042A512: call ebx
+  loc_0042A514: lea edx, var_5C
+  loc_0042A517: push edx
+  loc_0042A518: call [00401038h] ; __vbaStrVarMove
+  loc_0042A51E: mov edx, eax
+  loc_0042A520: mov ecx, esi
+  loc_0042A522: call edi
+  loc_0042A524: lea eax, var_5C
+  loc_0042A527: lea ecx, var_4C
+  loc_0042A52A: push eax
+  loc_0042A52B: push ecx
+  loc_0042A52C: push 00000002h
+  loc_0042A52E: call [00401040h] ; __vbaFreeVarList
+  loc_0042A534: add esp, 0000000Ch
+  loc_0042A537: jmp 00429F37h
+  loc_0042A53C: mov ax, [004481CEh]
+  loc_0042A542: test ax, ax
+  loc_0042A545: jl 0042A8C7h
+  loc_0042A54B: mov ebx, [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A551: movsx edi, ax
+  loc_0042A554: cmp edi, 00000101h
+  loc_0042A55A: jb 0042A55Eh
+  loc_0042A55C: call ebx
+  loc_0042A55E: lea edx, [edi+edi*4]
+  loc_0042A561: mov ecx, [00448080h]
+  loc_0042A567: lea eax, [edi+edx*2]
+  loc_0042A56A: shl eax, 05h
+  loc_0042A56D: add eax, edi
+  loc_0042A56F: shl eax, 04h
+  loc_0042A572: sub eax, edi
+  loc_0042A574: cmp [ecx+eax*4+00000006h], 0000h
+  loc_0042A57A: jnz 0042A5AFh
+  loc_0042A57C: movsx edi, [004481CEh]
+  loc_0042A583: cmp edi, 00000101h
+  loc_0042A589: jb 0042A58Dh
+  loc_0042A58B: call ebx
+  loc_0042A58D: lea edx, [edi+edi*4]
+  loc_0042A590: mov ecx, [00448080h]
+  loc_0042A596: lea eax, [edi+edx*2]
+  loc_0042A599: shl eax, 05h
+  loc_0042A59C: add eax, edi
+  loc_0042A59E: shl eax, 04h
+  loc_0042A5A1: sub eax, edi
+  loc_0042A5A3: mov [ecx+eax*4+00000028h], 0000h
+  loc_0042A5AA: jmp 0042A75Eh
+  loc_0042A5AF: movsx eax, [004481CEh]
+  loc_0042A5B6: cmp eax, 00000101h
+  loc_0042A5BB: mov var_AC, eax
+  loc_0042A5C1: jb 0042A5C5h
+  loc_0042A5C3: call ebx
+  loc_0042A5C5: movsx edi, [004481CEh]
+  loc_0042A5CC: cmp edi, 00000101h
+  loc_0042A5D2: jb 0042A5D6h
+  loc_0042A5D4: call ebx
+  loc_0042A5D6: lea edx, [edi+edi*4]
+  loc_0042A5D9: mov ecx, [00448080h]
+  loc_0042A5DF: lea eax, [edi+edx*2]
+  loc_0042A5E2: shl eax, 05h
+  loc_0042A5E5: add eax, edi
+  loc_0042A5E7: shl eax, 04h
+  loc_0042A5EA: sub eax, edi
+  loc_0042A5EC: mov dx, [ecx+eax*4+00000006h]
+  loc_0042A5F1: sub dx, 0001h
+  loc_0042A5F5: jo 0042AA36h
+  loc_0042A5FB: movsx eax, dx
+  loc_0042A5FE: cmp eax, 00000201h
+  loc_0042A603: mov var_B4, eax
+  loc_0042A609: jb 0042A60Dh
+  loc_0042A60B: call ebx
+  loc_0042A60D: movsx ebx, [004481CEh]
+  loc_0042A614: cmp ebx, 00000101h
+  loc_0042A61A: jb 0042A622h
+  loc_0042A61C: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A622: movsx edi, [004481CEh]
+  loc_0042A629: cmp edi, 00000101h
+  loc_0042A62F: jb 0042A637h
+  loc_0042A631: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A637: lea eax, [edi+edi*4]
+  loc_0042A63A: mov edx, [00448080h]
+  loc_0042A640: lea ecx, [edi+eax*2]
+  loc_0042A643: shl ecx, 05h
+  loc_0042A646: add ecx, edi
+  loc_0042A648: shl ecx, 04h
+  loc_0042A64B: sub ecx, edi
+  loc_0042A64D: mov ax, [edx+ecx*4+00000006h]
+  loc_0042A652: sub ax, 0001h
+  loc_0042A656: jo 0042AA36h
+  loc_0042A65C: movsx eax, ax
+  loc_0042A65F: cmp eax, 00000201h
+  loc_0042A664: mov var_C0, eax
+  loc_0042A66A: jb 0042A672h
+  loc_0042A66C: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A672: movsx eax, [004481CEh]
+  loc_0042A679: cmp eax, 00000101h
+  loc_0042A67E: mov var_A0, eax
+  loc_0042A684: jb 0042A68Ch
+  loc_0042A686: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A68C: movsx edi, [004481CEh]
+  loc_0042A693: cmp edi, 00000101h
+  loc_0042A699: jb 0042A6A1h
+  loc_0042A69B: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A6A1: lea ecx, [edi+edi*4]
+  loc_0042A6A4: mov eax, [00448080h]
+  loc_0042A6A9: lea edx, [edi+ecx*2]
+  loc_0042A6AC: shl edx, 05h
+  loc_0042A6AF: add edx, edi
+  loc_0042A6B1: shl edx, 04h
+  loc_0042A6B4: sub edx, edi
+  loc_0042A6B6: movsx eax, [eax+edx*4+00000006h]
+  loc_0042A6BB: cmp eax, 00000201h
+  loc_0042A6C0: mov var_A8, eax
+  loc_0042A6C6: jb 0042A6CEh
+  loc_0042A6C8: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A6CE: mov eax, var_C0
+  loc_0042A6D4: lea ecx, [ebx+ebx*4]
+  loc_0042A6D7: lea edx, [ebx+ecx*2]
+  loc_0042A6DA: lea ecx, [eax+eax*4]
+  loc_0042A6DD: shl edx, 05h
+  loc_0042A6E0: lea eax, [eax+ecx*2]
+  loc_0042A6E3: mov ecx, [00448080h]
+  loc_0042A6E9: add edx, ebx
+  loc_0042A6EB: lea edi, [ecx+eax*4]
+  loc_0042A6EE: mov eax, var_AC
+  loc_0042A6F4: shl edx, 04h
+  loc_0042A6F7: lea ecx, [eax+eax*4]
+  loc_0042A6FA: sub edx, ebx
+  loc_0042A6FC: lea ebx, [eax+ecx*2]
+  loc_0042A6FF: mov dx, [edi+edx*4+0000002Ah]
+  loc_0042A704: shl ebx, 05h
+  loc_0042A707: add ebx, eax
+  loc_0042A709: shl ebx, 04h
+  loc_0042A70C: sub ebx, eax
+  loc_0042A70E: mov eax, var_B4
+  loc_0042A714: lea ecx, [eax+eax*4]
+  loc_0042A717: lea eax, [eax+ecx*2]
+  loc_0042A71A: mov ecx, [00448080h]
+  loc_0042A720: lea eax, [ecx+eax*4]
+  loc_0042A723: add dx, [eax+ebx*4+00000028h]
+  loc_0042A728: mov eax, var_A0
+  loc_0042A72E: lea edi, [eax+eax*4]
+  loc_0042A731: jo 0042AA36h
+  loc_0042A737: lea edi, [eax+edi*2]
+  loc_0042A73A: shl edi, 05h
+  loc_0042A73D: add edi, eax
+  loc_0042A73F: shl edi, 04h
+  loc_0042A742: sub edi, eax
+  loc_0042A744: mov eax, var_A8
+  loc_0042A74A: lea ebx, [eax+eax*4]
+  loc_0042A74D: lea eax, [eax+ebx*2]
+  loc_0042A750: mov ebx, [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A756: lea ecx, [ecx+eax*4]
+  loc_0042A759: mov [ecx+edi*4+00000028h], dx
+  loc_0042A75E: movsx edi, [004481CEh]
+  loc_0042A765: cmp edi, 00000101h
+  loc_0042A76B: jb 0042A76Fh
+  loc_0042A76D: call ebx
+  loc_0042A76F: movsx ebx, [004481CEh]
+  loc_0042A776: cmp ebx, 00000101h
+  loc_0042A77C: jb 0042A784h
+  loc_0042A77E: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A784: lea edx, [ebx+ebx*4]
+  loc_0042A787: mov ecx, [00448080h]
+  loc_0042A78D: lea eax, [ebx+edx*2]
+  loc_0042A790: shl eax, 05h
+  loc_0042A793: add eax, ebx
+  loc_0042A795: shl eax, 04h
+  loc_0042A798: sub eax, ebx
+  loc_0042A79A: movsx ebx, [ecx+eax*4+00000006h]
+  loc_0042A79F: cmp ebx, 00000201h
+  loc_0042A7A5: jb 0042A7ADh
+  loc_0042A7A7: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A7AD: lea edx, [edi+edi*4]
+  loc_0042A7B0: lea ecx, [ebx+ebx*4]
+  loc_0042A7B3: lea eax, [edi+edx*2]
+  loc_0042A7B6: lea edx, [ebx+ecx*2]
+  loc_0042A7B9: mov ecx, [00448080h]
+  loc_0042A7BF: shl eax, 05h
+  loc_0042A7C2: add eax, edi
+  loc_0042A7C4: lea edx, [ecx+edx*4]
+  loc_0042A7C7: shl eax, 04h
+  loc_0042A7CA: sub eax, edi
+  loc_0042A7CC: mov [edx+eax*4+0000002Ah], 0001h
+  loc_0042A7D3: movsx edi, [004481CEh]
+  loc_0042A7DA: cmp edi, 00000101h
+  loc_0042A7E0: jb 0042A7E8h
+  loc_0042A7E2: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A7E8: movsx ebx, [004481CEh]
+  loc_0042A7EF: cmp ebx, 00000101h
+  loc_0042A7F5: jb 0042A7FDh
+  loc_0042A7F7: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A7FD: lea eax, [ebx+ebx*4]
+  loc_0042A800: mov edx, [00448080h]
+  loc_0042A806: lea ecx, [ebx+eax*2]
+  loc_0042A809: shl ecx, 05h
+  loc_0042A80C: add ecx, ebx
+  loc_0042A80E: shl ecx, 04h
+  loc_0042A811: sub ecx, ebx
+  loc_0042A813: movsx ebx, [edx+ecx*4+00000006h]
+  loc_0042A818: cmp ebx, 00000201h
+  loc_0042A81E: jb 0042A826h
+  loc_0042A820: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A826: mov ecx, 00000001h
+  loc_0042A82B: call [00401138h] ; __vbaUI1I2
+  loc_0042A831: lea ecx, [edi+edi*4]
+  loc_0042A834: lea edx, [edi+ecx*2]
+  loc_0042A837: lea ecx, [ebx+ebx*4]
+  loc_0042A83A: shl edx, 05h
+  loc_0042A83D: add edx, edi
+  loc_0042A83F: lea ecx, [ebx+ecx*2]
+  loc_0042A842: shl edx, 04h
+  loc_0042A845: sub edx, edi
+  loc_0042A847: mov edi, [00448080h]
+  loc_0042A84D: lea ecx, [edi+ecx*4]
+  loc_0042A850: mov [ecx+edx*4+00000014h], al
+  loc_0042A854: movsx edi, [004481CEh]
+  loc_0042A85B: cmp edi, 00000101h
+  loc_0042A861: jb 0042A869h
+  loc_0042A863: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A869: movsx ebx, [004481CEh]
+  loc_0042A870: cmp ebx, 00000101h
+  loc_0042A876: jb 0042A87Eh
+  loc_0042A878: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A87E: lea edx, [edi+edi*4]
+  loc_0042A881: mov eax, [00448080h]
+  loc_0042A886: push esi
+  loc_0042A887: lea ecx, [edi+edx*2]
+  loc_0042A88A: shl ecx, 05h
+  loc_0042A88D: add ecx, edi
+  loc_0042A88F: shl ecx, 04h
+  loc_0042A892: sub ecx, edi
+  loc_0042A894: mov dx, [eax+ecx*4+00000006h]
+  loc_0042A899: lea ecx, [ebx+ebx*4]
+  loc_0042A89C: add dx, 0001h
+  loc_0042A8A0: lea ecx, [ebx+ecx*2]
+  loc_0042A8A3: jo 0042AA36h
+  loc_0042A8A9: shl ecx, 05h
+  loc_0042A8AC: add ecx, ebx
+  loc_0042A8AE: shl ecx, 04h
+  loc_0042A8B1: sub ecx, ebx
+  loc_0042A8B3: mov [eax+ecx*4+00000006h], dx
+  loc_0042A8B8: call 00426230h
+  loc_0042A8BD: push 0042AA1Fh
+  loc_0042A8C2: jmp 0042AA0Ch
+  loc_0042A8C7: mov ax, [00448028h]
+  loc_0042A8CD: test ax, ax
+  loc_0042A8D0: jnz 0042A8E1h
+  loc_0042A8D2: mov edx, [004480ECh]
+  loc_0042A8D8: mov [edx+00000018h], ax
+  loc_0042A8DC: jmp 0042A972h
+  loc_0042A8E1: mov cx, ax
+  loc_0042A8E4: sub cx, 0001h
+  loc_0042A8E8: jo 0042AA36h
+  loc_0042A8EE: movsx ecx, cx
+  loc_0042A8F1: cmp ecx, 00000401h
+  loc_0042A8F7: mov var_A4, ecx
+  loc_0042A8FD: jb 0042A90Bh
+  loc_0042A8FF: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A905: mov ax, [00448028h]
+  loc_0042A90B: mov dx, ax
+  loc_0042A90E: sub dx, 0001h
+  loc_0042A912: jo 0042AA36h
+  loc_0042A918: movsx ebx, dx
+  loc_0042A91B: cmp ebx, 00000401h
+  loc_0042A921: jb 0042A92Fh
+  loc_0042A923: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A929: mov ax, [00448028h]
+  loc_0042A92F: movsx edi, ax
+  loc_0042A932: cmp edi, 00000401h
+  loc_0042A938: jb 0042A940h
+  loc_0042A93A: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A940: lea eax, [ebx+ebx*4]
+  loc_0042A943: lea ecx, [ebx+eax*2]
+  loc_0042A946: mov eax, var_A4
+  loc_0042A94C: lea edx, [eax+eax*4]
+  loc_0042A94F: lea edx, [eax+edx*2]
+  loc_0042A952: mov eax, [004480ECh]
+  loc_0042A957: mov cx, [eax+ecx*4+0000001Ah]
+  loc_0042A95C: add cx, [eax+edx*4+00000018h]
+  loc_0042A961: lea edx, [edi+edi*4]
+  loc_0042A964: lea edx, [edi+edx*2]
+  loc_0042A967: jo 0042AA36h
+  loc_0042A96D: mov [eax+edx*4+00000018h], cx
+  loc_0042A972: movsx edi, [00448028h]
+  loc_0042A979: cmp edi, 00000401h
+  loc_0042A97F: jb 0042A987h
+  loc_0042A981: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A987: mov edx, [004480ECh]
+  loc_0042A98D: lea eax, [edi+edi*4]
+  loc_0042A990: lea ecx, [edi+eax*2]
+  loc_0042A993: mov [edx+ecx*4+0000001Ah], 0001h
+  loc_0042A99A: movsx edi, [00448028h]
+  loc_0042A9A1: cmp edi, 00000401h
+  loc_0042A9A7: jb 0042A9AFh
+  loc_0042A9A9: call [004010F8h] ; __vbaGenerateBoundsError
+  loc_0042A9AF: mov ecx, 00000001h
+  loc_0042A9B4: call [00401138h] ; __vbaUI1I2
+  loc_0042A9BA: lea ecx, [edi+edi*4]
+  loc_0042A9BD: push esi
+  loc_0042A9BE: lea edx, [edi+ecx*2]
+  loc_0042A9C1: mov ecx, [004480ECh]
+  loc_0042A9C7: mov [ecx+edx*4+00000004h], al
+  loc_0042A9CB: mov dx, [00448028h]
+  loc_0042A9D2: add dx, 0001h
+  loc_0042A9D6: jo 0042AA36h
+  loc_0042A9D8: mov [00448028h], dx
+  loc_0042A9DF: call 00426230h
+  loc_0042A9E4: push 0042AA1Fh
+  loc_0042A9E9: jmp 0042AA0Ch
+  loc_0042A9EB: lea ecx, var_3C
+  loc_0042A9EE: call [00401254h] ; __vbaFreeStr
+  loc_0042A9F4: lea eax, var_6C
+  loc_0042A9F7: lea ecx, var_5C
+  loc_0042A9FA: push eax
+  loc_0042A9FB: lea edx, var_4C
+  loc_0042A9FE: push ecx
+  loc_0042A9FF: push edx
+  loc_0042AA00: push 00000003h
+  loc_0042AA02: call [00401040h] ; __vbaFreeVarList
+  loc_0042AA08: add esp, 00000010h
+  loc_0042AA0B: ret
+  loc_0042AA0C: lea ecx, var_20
+  loc_0042AA0F: call [0040102Ch] ; __vbaFreeVar
+  loc_0042AA15: lea ecx, var_34
+  loc_0042AA18: call [00401254h] ; __vbaFreeStr
+  loc_0042AA1E: ret
+  loc_0042AA1F: mov ecx, var_10
+  loc_0042AA22: mov ax, var_24
+  loc_0042AA26: pop edi
+  loc_0042AA27: pop esi
+  loc_0042AA28: mov fs:[00000000h], ecx
+  loc_0042AA2F: pop ebx
+  loc_0042AA30: mov esp, ebp
+  loc_0042AA32: pop ebp
+  loc_0042AA33: retn 0008h
