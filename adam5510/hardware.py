@@ -15,7 +15,11 @@
   слот 1 (ADAM-5050 №1): каналы 0..3 - обмотки A,B,C,D двигателя Y,
                          канал 4     - Stand_by (кнопка, читается программой)
 
-Остальные каналы заняты периферией стенда (см. STAND_CHANNELS).
+Остальные каналы ADAM-5050 заняты периферией стенда (см. STAND_CHANNELS).
+Аналоговые модули (см. AO_DEVICES / AI_DEVICES):
+  ADAM-5024 (слот 2) - аналоговые выходы: два двигателя, динамик, "Cool_Extreme";
+  ADAM-5017 (слот 3) - аналоговые входы: терморезистор, датчики света/звука,
+                       аварийный датчик, счётчик охлаждения, два резистора.
 """
 import threading
 import time
@@ -39,7 +43,7 @@ STAND_CHANNELS = {
     (0, 7): ("Hot", "out", "Светодиод Hot (нагрев)"),
     (0, 8): ("Place_1_1", "in", "Датчик наличия Place 1-1"),
     (0, 9): ("Place_1_2", "in", "Датчик наличия Place 1-2"),
-    (0, 10): ("Place_1_3", "in", "Датчик наличия Place 1-3"),
+    (0, 10): ("Place_2_3", "in", "Датчик наличия Place 2-3"),
     (0, 11): ("Seg_a", "seg", "Семисегментный индикатор, сегмент a"),
     (0, 12): ("Seg_b", "seg", "Семисегментный индикатор, сегмент b"),
     (0, 13): ("Seg_c", "seg", "Семисегментный индикатор, сегмент c"),
@@ -55,17 +59,53 @@ STAND_CHANNELS = {
     (1, 6): ("Couster_2", "counter", "Счётчик N2 (считает импульсы)"),
     (1, 7): ("Hot_Extreme", "out", "Светодиод Hot_Extreme (парный к Hot)"),
     (1, 8): ("Alarm_Saund", "out", "Звуковой сигнал тревоги"),
-    (1, 9): ("Place_2_1", "in", "Датчик наличия Place 2-1"),
-    (1, 10): ("Place_2_2", "in", "Датчик наличия Place 2-2"),
-    (1, 11): ("Place_2_3", "in", "Датчик наличия Place 2-3"),
+    (1, 9): ("Place_1_3", "in", "Датчик наличия Place 1-3"),
+    (1, 10): ("Place_2_1", "in", "Датчик наличия Place 2-1"),
+    (1, 11): ("Place_2_2", "in", "Датчик наличия Place 2-2"),
     (1, 12): ("Cool", "out", "Вентилятор (охлаждение)"),
     (1, 13): ("Seg_e", "seg", "Семисегментный индикатор, сегмент e"),
     (1, 14): ("Seg_f", "seg", "Семисегментный индикатор, сегмент f"),
     (1, 15): ("Seg_g", "seg", "Семисегментный индикатор, сегмент g"),
 }
 
-# Терморезисторы (NTC) подключены к аналоговым входам ADAM-5017.
-THERMISTORS = [(0, "Thermistor_1"), (1, "Thermistor_2")]
+# --------------------------------------------------------------------------- #
+#  Аналоговые модули (по схеме)
+#  ADAM-5024 - аналоговые ВЫХОДЫ, стоит в слоте 2: kind: motor - двигатель
+#        (число = скорость), speaker - динамик (частота тона), cooler - охладитель.
+#  ADAM-5017 - аналоговые ВХОДЫ, стоит в слоте 3: kind: thermistor - терморезистор
+#        (управляется ползунком + нагревом от AO0), sensor - датчик (ползунок 0..10 В),
+#        resistor - подстроечный резистор: +V -> R2 (стрелка в резистор от плюса),
+#        GND -> R1 (стрелка в резистор от земли).
+# --------------------------------------------------------------------------- #
+AO_SLOT = 2          # слот ADAM-5024 (аналоговые выходы)
+AI_SLOT = 3          # слот ADAM-5017 (аналоговые входы)
+
+AO_DEVICES = {
+    0: ("Analog_Motor_1", "motor", "Двигатель M1: число 0..100 = скорость вращения"),
+    1: ("Analog_Motor_2", "motor", "Двигатель M2: число 0..100 = скорость вращения"),
+    2: ("Speaker", "speaker", "Динамик: число = частота звука, Гц (0 = тихо)"),
+    3: ("Cool_Extreme", "cooler", "Охладитель A/M: 0..10 В, охлаждает терморезистор №1"),
+}
+
+AI_DEVICES = {
+    0: ("Temp", "thermistor", "Терморезистор (NTC): 10 В = холодный, 0 В = горячий"),
+    1: ("Light_Sensor_1", "sensor", "Датчик света U1 (ΔU1): напряжение 0..10 В"),
+    2: ("Sound_Sensor", "sensor", "Датчик звука (микрофон): напряжение 0..10 В"),
+    3: ("Light_Sensor_2", "sensor", "Датчик света U2 (ΔU2): напряжение 0..10 В"),
+    4: ("Alarm_Sensor", "sensor", "Аварийный датчик (ΔU): напряжение 0..10 В"),
+    5: ("Counter_Cool_Extreme", "sensor", "Счётчик охлаждения (ΔN0): показание 0..10"),
+    6: ("Rezistor_2", "resistor", "Резистор R2: стрелка от +V (напряжение делителя 0..10 В)"),
+    7: ("Rezistor_1", "resistor", "Резистор R1: стрелка от GND (напряжение делителя 0..10 В)"),
+}
+
+# Терморезисторы (NTC) на аналоговых входах ADAM-5017 (по схеме):
+#   Thermistor_1 -> вход 0 (Temp),        нагрев выходом AO0;
+#   Thermistor_2 -> вход 3 (Light_Sensor_2 - второй терморезистор в цепи ΔU2),
+#                  нагрев выходом AO3 (Cool_Extreme).
+THERMISTORS = [(0, "Thermistor_1"), (3, "Thermistor_2")]
+
+# Входы ADAM-5017, которыми можно управлять ползунком (кроме терморезисторов):
+MANUAL_AI = [1, 2, 4, 5, 6, 7]     # Light_Sensor_1/2, Sound, Alarm, Counter, R2, R1
 
 # Семисегментный индикатор: какой сегмент горит для цифры 0..9 (a..g).
 SEG_PATTERNS = {
@@ -195,14 +235,19 @@ class Thermistor(object):
 
     Ползунок задаёт "нагрев" 0..100%; напряжение на входе 0..10 В:
     холодный терморезистор -> высокое напряжение, горячий -> низкое.
+    Дополнительно нагревается выходом ADAM-5024 (heater_ao), охлаждается
+    охладителем (cooler_ao) и цифровым вентилятором Cool (канал 1:12).
     """
 
-    def __init__(self, channel, name):
+    def __init__(self, channel, name, heater_ao=None, cooler_ao=None):
         self.ch = channel
         self.name = name
         self.power = 0.0        # нагрев от внешних цепей, %
         self.level = 50.0       # показание ползунка, %
         self.vref = 10.0
+        self.heater_ao = heater_ao      # выход ADAM-5024, греющий этот терморезистор
+        self.cooler_ao = cooler_ao      # выход ADAM-5024, охлаждающий его
+        self.fan_ch = (1, 12)           # цифровой канал "Cool" (вентилятор)
 
     @property
     def temp_pct(self):
@@ -231,8 +276,80 @@ class Hardware:
         # ---- стенд ----
         self.counters = {(0, 6): 0, (1, 6): 0}     # Couster_1, Couster_2
         self.seg_digit = None                      # цифра на индикаторе или None
-        self.thermistors = [Thermistor(ch, nm) for ch, nm in THERMISTORS]
+        # терморезисторы: Thermistor_1 греется AO0 и охлаждается вентилятором Cool;
+        # Thermistor_2 - "экстремальный": его же охладитель Cool_Extreme (AO3)
+        # одновременно и греет (полярность условная).
+        self.thermistors = [
+            Thermistor(0, "Thermistor_1", heater_ao=0),
+            Thermistor(3, "Thermistor_2", heater_ao=3),
+        ]
         self.stand_observers = []                  # колбэки: что-то изменилось
+        # ---- аналоговая периферия ADAM-5024 / ADAM-5017 ----
+        self.motors = {ch: {"speed": 0.0, "angle": 0.0, "last": time.time()}
+                       for ch in AO_DEVICES if AO_DEVICES[ch][1] == "motor"}
+        self.speaker_hz = 0.0                      # частота тона на Speaker (AO2)
+        self.cool_extreme = 0.0                    # показание охладителя A/M (AO3)
+        self.sensor_levels = {1: 5.0, 2: 0.0, 4: 0.0, 5: 0.0,   # AI: датчики
+                              6: 5.0, 7: 5.0}                   # AI: резисторы R2/R1
+        self._t = time.time()
+        self._timer = None
+        self._start_sim()
+
+    # ---- физика стенда: моторы крутятся, терморезисторы остывают ----
+    def _start_sim(self):
+        self._tick()
+
+    def _tick(self):
+        now = time.time()
+        dt = min(1.0, max(0.0, now - self._t))
+        self._t = now
+        changed = False
+        # аналоговые двигатели: скорость 0..100 -> обороты
+        for m in self.motors.values():
+            if m["speed"]:
+                m["angle"] = (m["angle"] + m["speed"] * 3.6 * dt) % 360.0
+                changed = True
+        # терморезисторы: нагрев от выходов ADAM-5024, остывание (вент. Cool ускоряет)
+        fan = bool(self.dio[1][12])
+        for t in self.thermistors:
+            ext = 0.0
+            if t.heater_ao is not None:
+                v = float(self.ao[t.heater_ao])
+                # 0..10 В трактуем как 0..100 % нагрева
+                ext += v * 10.0 if 0.0 <= v <= 10.0 else max(0.0, min(100.0, v))
+            cool = 0.0
+            if t.cooler_ao is not None:
+                cool = max(0.0, min(100.0, float(self.ao[t.cooler_ao])))
+            tgt = min(100.0, ext)
+            k = (2.5 + 6.0 * fan + 3.0 * cool / 100.0) * dt
+            if abs(t.power - tgt) > 0.01:
+                t.power += (tgt - t.power) * min(1.0, k)
+                changed = True
+            elif t.power != tgt:
+                t.power = tgt
+                changed = True
+        if changed:
+            self.refresh_sensors()
+            self._notify()
+        self._timer = threading.Timer(0.1, self._tick)
+        self._timer.daemon = True
+        self._timer.start()
+
+    def stop_sim(self):
+        if self._timer is not None:
+            self._timer.cancel()
+            self._timer = None
+
+    def motor_angle(self, ch):
+        m = self.motors.get(ch)
+        return m["angle"] if m else 0.0
+
+    def refresh_sensors(self):
+        """Пересчитать напряжения всех аналоговых входов ADAM-5017."""
+        for t in self.thermistors:
+            t.update(self.ai)
+        for ch, lvl in self.sensor_levels.items():
+            self.ai[ch] = round(float(lvl), 3)
 
     # ---- наблюдатели (окно стенда подписывается на изменения) ----
     def add_observer(self, fn):
@@ -328,11 +445,17 @@ class Hardware:
         t.update(self.ai)
         self._notify()
 
-    def set_thermistor_power(self, index, power):
-        """Нагрев терморезистора выходом ADAM-5024 (0..10 В -> 0..100 %)."""
-        t = self.thermistors[index]
-        t.power = max(0.0, min(100.0, float(power)))
-        t.update(self.ai)
+    def set_sensor(self, ch, val):
+        """Ползунок датчика/резистора ADAM-5017 в окне стенда (0..10 В)."""
+        if not 0 <= ch < 8:
+            raise HwError("неверный канал ADAM-5017: %d" % ch)
+        if AI_DEVICES[ch][1] == "thermistor":
+            # вход Temp занят терморезистором - ползунком задаём его температуру
+            for t in self.thermistors:
+                if t.ch == ch:
+                    return self.set_thermistor(self.thermistors.index(t), val * 10.0)
+        self.sensor_levels[ch] = max(0.0, min(10.0, float(val)))
+        self.ai[ch] = round(self.sensor_levels[ch], 3)
         self._notify()
 
     def refresh_thermistors(self):
@@ -377,21 +500,30 @@ class Hardware:
         self.comm_ts = time.time()
         self._notify()
 
-    # ---- ADAM-5024 / ADAM-5017 ----
+    # ---- ADAM-5024 (слот 2, аналоговые выходы) ----
     def write_ao(self, ch, val):
         if not 0 <= ch < 4:
             raise HwError("неверный канал ADAM-5024: %d" % ch)
         self.ao[ch] = val
-        # выходы ADAM-5024 нагревают терморезисторы стенда:
-        #   0..10 В -> нагрев 0..100 %;  значения > 10 считаются условными
-        #   единицами (0..100 %)
         v = float(val)
-        pct = v * 10.0 if 0.0 <= v <= 10.0 else max(0.0, min(100.0, v))
-        if ch in (0, 1):
-            self.set_thermistor_power(ch, pct)
+        kind = AO_DEVICES[ch][1]
+        if kind == "motor":                      # Analog_Motor_N: скорость 0..100
+            m = self.motors.get(ch)
+            if m is not None:
+                m["speed"] = max(0.0, min(100.0, abs(v)))
+        elif kind == "speaker":                  # Speaker: частота тона, Гц
+            self.speaker_hz = max(0.0, v)
+        elif kind == "cooler":                   # Cool_Extreme: показание A/M
+            self.cool_extreme = v
+        # нагрев терморезисторов происходит в _tick() по значениям ao[]
         self.comm_ts = time.time()
         self._notify()
 
+    def speaker_tone(self):
+        """Текущий тон динамика: (частота Гц, длительность изменения)."""
+        return self.speaker_hz
+
+    # ---- ADAM-5017 (слот 3, аналоговые входы) ----
     def read_ai(self, ch):
         if not 0 <= ch < 8:
             raise HwError("неверный канал ADAM-5017: %d" % ch)
@@ -402,5 +534,11 @@ class Hardware:
         """Ручная установка аналогового входа (ползунок в окне)."""
         if not 0 <= ch < 8:
             raise HwError("неверный канал ADAM-5017: %d" % ch)
-        self.ai[ch] = val
+        kind = AI_DEVICES[ch][1]
+        if kind == "thermistor":
+            for i, t in enumerate(self.thermistors):
+                if t.ch == ch:
+                    return self.set_thermistor(i, float(val) * 10.0)
+        self.sensor_levels[ch] = max(0.0, min(10.0, float(val)))
+        self.ai[ch] = round(self.sensor_levels[ch], 3)
         self._notify()
