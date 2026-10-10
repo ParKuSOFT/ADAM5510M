@@ -296,7 +296,7 @@ def _split_macro_args(s):
 
 def _macro_call_at(text, name, i):
     """Если в позиции i начинается вызов макроса name(...), возвращает
-    (индекс конца строки включительно, список аргументов) либо None.
+    (позиция закрывающей скобки, список аргументов) либо None.
     Аргументы могут занимать несколько строк (как в настоящем С)."""
     j = i + len(name)
     while j < len(text) and text[j] in " \t":
@@ -336,9 +336,7 @@ def _macro_call_at(text, name, i):
         return None                     # незакрытая скобка - не считаем вызовом
     if cur.strip() or args:
         args.append(cur.strip())
-    end = k                             # позиция закрывающей ')'
-    nl = text.find("\n", end)
-    return (n if nl < 0 else nl), args
+    return k, args                      # позиция закрывающей ')' и аргументы
 
 
 def _expand_macros(text, obj, fn_noarg, fn_arg):
@@ -349,7 +347,13 @@ def _expand_macros(text, obj, fn_noarg, fn_arg):
     if not names:
         return text
     pat = re.compile(r"\b(%s)\b" % "|".join(re.escape(n) for n in names))
-    out, i, stack = [], 0, set()
+    out, i, stack = [], 0, []          # стек имён, раскрытие которых идёт сейчас
+    def _inner():                       # словари без имён со стека (защита от рекурсии)
+        banned = set(stack)
+        return ({p: v for p, v in fn_noarg.items() if p not in banned},
+                {p: v for p, v in fn_arg.items() if p not in banned})
+    def expand(s):                      # рекурсия через замыкание, словари общие
+        return _expand_macros(s, obj, *_inner())
     while True:
         m = pat.search(text, i)
         if m is None:
@@ -361,64 +365,77 @@ def _expand_macros(text, obj, fn_noarg, fn_arg):
             out.append(name)
             i = m.end()
             continue
-        if name in fn_arg:
-            res = _macro_call_at(text, name, m.start())
-            if res is None:             # без скобок - это не вызов макроса
-                out.append(name)
+        stack.append(name)
+        try:
+            if name in fn_arg:
+                res = _macro_call_at(text, name, m.start())
+                if res is None:         # без скобок - это не вызов макроса
+                    out.append(name)
+                    i = m.end()
+                    continue
+                end, raw = res
+                params = fn_arg[name][0]
+                body = fn_arg[name][1]
+                if len(raw) != len(params):     # не то число аргументов - не раскрываем
+                    out.append(text[m.start():end + 1])
+                    i = end + 1
+                    continue
+                sub = dict(zip(params, [expand(a) for a in raw]))
+                repl = expand(_apply_text(body, sub))
+                out.append("(" + repl + ")" if repl else "")
+                i = end + 1
+                continue
+            if name in fn_noarg:
+                repl = expand(fn_noarg[name])
+                out.append("(" + repl + ")" if repl else "")
                 i = m.end()
                 continue
-            end, raw = res
-            params = fn_arg[name][0]
-            body = fn_arg[name][1]
-            passed = [_expand_macros(a, obj, fn_noarg,
-                                     {p: v for p, v in fn_arg.items() if p != name})
-                      for a in raw]
-            sub = dict(zip(params, passed))
-            for p in params[len(passed):]:
-                sub[p] = ""
-            repl = _apply_text(body, sub)
-            repl = _expand_macros(repl, obj, fn_noarg,
-                                  {p: v for p, v in fn_arg.items() if p != name})
-            out.append(repl)
-            i = end + 1
-            continue
-        if name in fn_noarg:
-            body = fn_noarg[name]
-            stack.add(name)
-            repl = _expand_macros(body, obj,
-                                  {p: v for p, v in fn_noarg.items() if p != name},
-                                  {p: v for p, v in fn_arg.items() if p != name})
-            stack.discard(name)
-            out.append(repl)
+            out.append(expand(obj[name]))
             i = m.end()
-            continue
-        val = obj[name]
-        stack.add(name)
-        repl = _expand_macros(val, obj,
-                              {p: v for p, v in fn_noarg.items() if p != name},
-                              {p: v for p, v in fn_arg.items() if p != name})
-        stack.discard(name)
-        out.append(repl)
-        i = m.end()
+        finally:
+            stack.pop()
     return "".join(out)
 
 
 def _apply_text(body, sub):
-    """Замена параметров макроса на фактические аргументы (с '#param' -> "аргумент")."""
+    """Замена параметров макроса на фактические аргументы (с '#param' -> "аргумент").
+    Внутри строковых и символьных литералов имена параметров не заменяются."""
     if not sub:
         return body
-    pat = re.compile(r"(#)?\b(%s)\b" % "|".join(re.escape(p) for p in sub))
+    pat = re.compile(r'("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')|(#[ ]?)?\b(%s)\b'
+                     % "|".join(re.escape(p) for p in sub))
 
     def rep(m):
-        p = m.group(2)
+        if m.group(1) is not None:      # строка/символ - без изменений
+            return m.group(1)
+        p = m.group(3)
         v = sub.get(p)
         if v is None:
             return m.group(0)
-        if m.group(1):                  # строкаизация: #x -> "текст аргумента"
+        if m.group(2):                  # строкаизация: #x -> "текст аргумента"
             return '"%s"' % v.replace("\\", "\\\\").replace('"', '\\"')
         return "(%s)" % v if (" " in v.strip() or "|" in v or "&" in v or
                               "," in v.strip()) else v
     return pat.sub(rep, body)
+
+
+_DEFINE_RE = re.compile(r"^#\s*define\s+")
+
+
+def _join_continuations(lines):
+    """Склеивает строки директив с обратным слэшем в конце,
+    сохраняя общее число строк."""
+    out, i = [], 0
+    while i < len(lines):
+        cur = lines[i]
+        i += 1
+        while cur.rstrip().endswith("\\") and i < len(lines):
+            cur = cur.rstrip()[:-1] + " " + lines[i].strip()
+            i += 1
+        out.append(cur)
+    while len(out) < len(lines):
+        out.append("")
+    return out
 
 
 def preprocess(src):
@@ -429,7 +446,7 @@ def preprocess(src):
     #endif (без вложенных условных блоков внутри).
     """
     src = strip_comments(src.replace("\r\n", "\n").replace("\r", "\n"))
-    lines = src.split("\n")
+    lines = _join_continuations(src.split("\n"))
     obj, fn_noarg, fn_arg, errors = {}, {}, {}, []
     keep, seen_else, cond_stack = [], None, []
 
@@ -445,7 +462,25 @@ def preprocess(src):
         if s.startswith("#"):
             mm = re.match(r"#\s*(\w+)", s)
             cmd = mm.group(1) if mm else ""
-            if cmd == "ifdef" and not skip:
+            if cmd == "define" and not skip:
+                d = s[_DEFINE_RE.match(s).end():]
+                nm = re.match(r"([A-Za-z_]\w*)\s*(.*)$", d)
+                if not nm:
+                    errors.append((k + 1, "не удалось разобрать #define"))
+                elif "(" in nm.group(2)[:len(nm.group(1)) + 1] and \
+                        re.match(r"([A-Za-z_]\w*)\(([^)]*)\)\s*(.*)$", d):
+                    fm = re.match(r"([A-Za-z_]\w*)\(([^)]*)\)\s*(.*)$", d)
+                    name = fm.group(1)
+                    params = [q.strip() for q in fm.group(2).split(",") if q.strip()]
+                    body = fm.group(3).strip()
+                    if params:
+                        fn_arg[name] = (params, body)
+                    else:
+                        fn_noarg[name] = body
+                else:
+                    val = nm.group(2).strip()
+                    obj[nm.group(1)] = val if val else "1"
+            elif cmd == "ifdef" and not skip:
                 keep.append(_val_of(s[6:]) == 1)
                 cond_stack.append(False)
             elif cmd == "ifndef" and not skip:
