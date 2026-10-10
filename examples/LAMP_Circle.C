@@ -27,7 +27,16 @@ void main()
 	LED_init();
 	while(Stand_By == 0)
 	{
-		// ... (как было)
+		Set5050(&Signal[0], _5050_0, 0, ABit);
+		Set5050(&Signal[0], _5050_0, 1, ABit);
+		Set5050(&Signal[0], _5050_0, 2, ABit);
+		Set5050(&Signal[0], _5050_0, 3, ABit);
+		Set5050(&Signal[0], _5050_1, 0, ABit);
+		Set5050(&Signal[0], _5050_1, 1, ABit);
+		Set5050(&Signal[0], _5050_1, 2, ABit);
+		Set5050(&Signal[0], _5050_1, 3, ABit);
+		Set5050(&Work[0], _5050_0, 4, ABit);
+		Get5050(_5050_1, 4, ABit, &Stand_By);
 	}
 
 	Pen_State('U');
@@ -35,7 +44,7 @@ void main()
 	prevX = 0;
 	prevY = 0;
 
-	Pen_State('D');
+	
 
 	int cx = 200;
 	int cy = 200;
@@ -45,6 +54,8 @@ void main()
 	int startX = cx + r;
 	int startY = cy;
 	GoTo(startX, startY);
+
+	Pen_State('D');
 
 	// Идём по углу с мелким шагом
 	float phi;
@@ -56,8 +67,8 @@ void main()
 	phi = 0.0f;
 	while(phi < 6.2832f)
 	{
-		px = cx + (int)(r * cos(phi));
-		py = cy + (int)(r * sin(phi));
+		px = cx + (r * cos(phi));
+		py = cy + (r * sin(phi));
 		GoTo(px, py);
 		phi = phi + dphi;
 	}

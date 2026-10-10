@@ -21,6 +21,7 @@ STAND_BUTTONS = {"in": ("Stand_by",),
                  "out": ("Hot", "Wait", "Hot_Extreme", "Alarm_Saund", "Cool")}
 
 
+
 class App(object):
     def __init__(self, root, hw, path=None):
         self.root, self.hw = root, hw

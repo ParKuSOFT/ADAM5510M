@@ -423,6 +423,11 @@ class Hardware:
     def _start_sim(self):
         self._tick()
 
+    def _plotter_step(self, motor, d):
+        """Шаг шагового двигателя плоттера: двигатель Y тянет груз M2 на стенде."""
+        if motor == 1:
+            self.hoists[1].stepper_step(d)
+
     def _tick(self):
         now = time.time()
         dt = min(1.0, max(0.0, now - self._t))
