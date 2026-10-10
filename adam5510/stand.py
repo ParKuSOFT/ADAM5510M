@@ -13,16 +13,159 @@
 Все элементы можно трогать и из этого окна, и из основной формы (там же список
 каналов) - состояние хранится в Hardware, окна только его отображают.
 """
+import math
 import tkinter as tk
 from tkinter import ttk
 
-from .hardware import STAND_CHANNELS, THERMISTORS, SEG_ORDER, segment_value
+from .hardware import (STAND_CHANNELS, THERMISTORS, SEG_ORDER, HOIST_TRAVEL_MM,
+                       STEP_MM)
 
 LED_ON = {
     "Hot": "#ff5030", "Hot_Extreme": "#ff9020", "Wait": "#ffe020",
     "Alarm_Saund": "#ff2020", "Cool": "#40c0ff", "Work": "#60e060",
 }
 LED_OFF = "#d8d8d8"
+
+# --------------------------------------------------------------------------- #
+#  Визуализация "лифтов": мотор сверху, груз на нитке снизу, три датчика.
+# --------------------------------------------------------------------------- #
+PHASE_SEQ = [(1, 0, 0, 1), (1, 1, 0, 0), (0, 1, 1, 0), (0, 0, 1, 1)]
+
+
+class HoistView(object):
+    """Один "лифт" на canvas: барабан-мотор, нитка, груз, датчики Place_N_1..3."""
+
+    W = 270                     # ширина области лифта
+    MOTOR_CY = 46               # центр барабана мотора
+    TOP_Y = 78                  # край рамки, откуда свисает нитка
+    LINE_X = 150                # вертикальная линия нитки
+    TRAVEL_PX = 300             # ход груза в пикселах
+    LOAD_W, LOAD_H = 46, 30     # размер груза
+    SENSOR_ZONE_PX = 12         # зона срабатывания датчика (≈7 мм модели)
+
+    def __init__(self, cv, hw, index):
+        self.cv, self.hw, self.index = cv, hw, index
+        h = hw.hoists[index]
+        self.title = "Лифт M%d — ШД %s" % (index + 1, "X" if index == 0 else "Y")
+        x = self.LINE_X
+        top = self.TOP_Y
+        bot = top + self.TRAVEL_PX
+
+        cv.create_text(135, 12, text=self.title, anchor="w", font=("TkDefaultFont", 10, "bold"))
+        cv.create_text(135, 28, anchor="w", fill="#666",
+                       text="шаг = %.2f мм (4 шага = 1 мм)" % STEP_MM)
+
+        # ---- мотор (барабан) сверху ----
+        cx, cy, r = x, self.MOTOR_CY, 22
+        self.motor_body = cv.create_oval(cx - r, cy - r, cx + r, cy + r,
+                                         fill="#e8e8e8", outline="#555", width=2)
+        self.spokes = [cv.create_line(cx, cy, cx, cy - r + 4, fill="#777", width=2)
+                       for _ in range(4)]
+        cv.create_oval(cx - 3, cy - 3, cx + 3, cy + 3, fill="#555", outline="")
+        # индикатор работы мотора (горит/мигает, когда программа крутит обмотки)
+        self.motor_led = cv.create_oval(x + 40, cy - 8, x + 56, cy + 8,
+                                        fill=LED_OFF, outline="#888")
+        cv.create_text(x + 48, cy + 22, text="M", fill="#666")
+        # направление вращения (стрелка вокруг барабана)
+        self.arrow = cv.create_arc(cx - r - 8, cy - r - 8, cx + r + 8, cy + r + 8,
+                                   start=40, extent=90, style="arc", outline="#2b7de9",
+                                   width=2)
+
+        # ---- рамка и нитка ----
+        cv.create_rectangle(x - 60, top, x + 60, bot, fill="#fbfbfb", outline="#999")
+        self.thread = cv.create_line(x, self.MOTOR_CY, x, top + 6, fill="#444", width=2)
+        self.winding = cv.create_line(x - 14, self.MOTOR_CY + r - 2, x + 14,
+                                      self.MOTOR_CY + r - 2, fill="#888", width=3)
+
+        # ---- груз ----
+        self.load = cv.create_rectangle(x - self.LOAD_W / 2.0, bot - self.LOAD_H,
+                                        x + self.LOAD_W / 2.0, bot,
+                                        fill="#7f8fa6", outline="#333")
+        self.load_txt = cv.create_text(x, bot - self.LOAD_H / 2.0, text="груз",
+                                       fill="white")
+
+        # ---- датчики: верхний Place_N_1, средний _N_2, нижний _N_3 ----
+        self.sensors = []
+        names = ["Place_%d_1" % (index + 1), "Place_%d_2" % (index + 1),
+                 "Place_%d_3" % (index + 1)]
+        for i, ((slot, ch), nm) in enumerate(zip(h.sensors, names)):
+            sy = top + i * self.TRAVEL_PX / 2.0          # 0 - верх, 1 - середина, 2 - низ
+            sx = x + 60                                   # справа от нитки
+            body = cv.create_rectangle(sx, sy - 9, sx + 26, sy + 9,
+                                       fill="#dfe6ee", outline="#555")
+            led = cv.create_oval(sx + 30, sy - 6, sx + 42, sy + 6,
+                                 fill=LED_OFF, outline="#888")
+            txt = cv.create_text(sx + 62, sy, text=nm, anchor="w", fill="#333")
+            self.sensors.append((slot, ch, body, led))
+
+        # ---- ползунок ручного перемещения груза (вниз = меньше мм) ----
+        self.slider = tk.Scale(cv, from_=int(HOIST_TRAVEL_MM), to=0, showvalue=True,
+                               length=self.TRAVEL_PX - 20, orient="vertical",
+                               label="мм", font=("TkDefaultFont", 8))
+        self.slider.set(0)
+        self.slider.configure(command=lambda v, idx=index: self._on_slider(idx, v))
+        self._updating_slider = False
+        cv.create_window(x - 88, (top + bot) / 2.0, window=self.slider)
+        self.pos_lbl = cv.create_text(x, bot + 16, text="", fill="#333")
+
+    def _on_slider(self, index, value):
+        if self._updating_slider:
+            return
+        self.hw.set_hoist_position(index, float(value))
+
+    def refresh(self, dio, steps_cache):
+        h = self.hw.hoists[self.index]
+        x = self.LINE_X
+        top = self.TOP_Y
+        bot = top + self.TRAVEL_PX
+        frac = max(0.0, min(1.0, h.position / h.travel))
+        y = bot - frac * self.TRAVEL_PX                  # y груза (0 мм = внизу)
+
+        # нитка: от барабана до верха груза
+        self.cv.coords(self.thread, x, self.MOTOR_CY, x, y - self.LOAD_H / 2.0)
+        # намотка на барабан: толщина слоя растёт, когда груз поднят
+        w = 6 + frac * 12
+        self.cv.coords(self.winding, x - w, self.MOTOR_CY + 20, x + w, self.MOTOR_CY + 20)
+        # груз
+        self.cv.coords(self.load, x - self.LOAD_W / 2.0, y - self.LOAD_H / 2.0,
+                       x + self.LOAD_W / 2.0, y + self.LOAD_H / 2.0)
+        self.cv.coords(self.load_txt, x, y)
+
+        # мотор: крутится ли? (шаги с прошлого опроса)
+        moved = abs(h.steps - steps_cache.get(self.index, h.steps))
+        steps_cache[self.index] = h.steps
+        if moved:
+            self._angle = (getattr(self, "_angle", 0.0) + moved * 30.0) % 360.0
+            self._blink = not getattr(self, "_blink", False)
+        col = ("#60e060" if getattr(self, "_blink", False) else "#1e9e3a") \
+            if moved else LED_OFF
+        self.cv.itemconfig(self.motor_led, fill=col)
+        # спицы барабана
+        cx, cy, r = x, self.MOTOR_CY, 22
+        a0 = getattr(self, "_angle", 0.0)
+        for k, sp in enumerate(self.spokes):
+            a = math.radians(a0 + k * 90.0)
+            self.cv.coords(sp, cx, cy, cx + (r - 4) * math.sin(a),
+                           cy - (r - 4) * math.cos(a))
+        # стрелка направления: Direct_M_* = 1 -> подъём (по часовой)
+        d = dio[h.slot][h.dir_ch]
+        self.cv.itemconfig(self.arrow,
+                           start=40 if d else 130, extent=90 if d else -90,
+                           outline="#2b7de9" if moved else "#c0c0c0")
+
+        # датчики
+        for (slot, ch, body, led) in self.sensors:
+            on = bool(dio[slot][ch])
+            self.cv.itemconfig(led, fill="#ff3b30" if on else LED_OFF,
+                               outline="#888")
+            self.cv.itemconfig(body, fill="#ffe2d6" if on else "#dfe6ee")
+
+        self.cv.itemconfig(self.pos_lbl,
+                           text="высота %.1f мм · шагов: %d" % (h.position, h.steps))
+        if abs(self.slider.get() - h.position) > STEP_MM:
+            self._updating_slider = True
+            self.slider.set(int(round(h.position)))
+            self._updating_slider = False
 
 
 class StandWindow(tk.Toplevel):
@@ -41,16 +184,20 @@ class StandWindow(tk.Toplevel):
         self.seg_canvas = None
         self.shadow_dio = [[None] * 16 for _ in range(2)]
         self.shadow_ai = [None] * 8
+        self._steps_cache = {}          # номер лифта -> h.steps на прошлом опросе
         self._dirty = True
 
         nb = ttk.Notebook(self)
         nb.pack(fill="both", expand=True, padx=6, pady=6)
 
+        hoist_fr = tk.Frame(nb)
+        nb.add(hoist_fr, text="Лифты (моторы и грузы)")
         main_fr = tk.Frame(nb)
         nb.add(main_fr, text="Стенд")
         map_fr = tk.Frame(nb)
         nb.add(map_fr, text="Схема подключений")
 
+        self._build_hoists(hoist_fr)
         self._build_main(main_fr)
         self._build_map(map_fr)
 
@@ -59,6 +206,23 @@ class StandWindow(tk.Toplevel):
         self.after(80, self.refresh)
 
     # ------------------------------------------------------------------ UI
+    def _build_hoists(self, parent):
+        """Вкладка «Лифты»: мотор сверху, груз на нитке, датчики Place_N_1..3."""
+        fr = tk.Frame(parent)
+        fr.pack(fill="both", expand=True, padx=6, pady=6)
+        self.hoist_views = []
+        for i in range(len(self.hw.hoists)):
+            cv = tk.Canvas(fr, width=HoistView.W, height=430, bg="white",
+                           highlightthickness=1, highlightbackground="#bbb")
+            cv.grid(row=0, column=i, padx=8)
+            self.hoist_views.append(HoistView(cv, self.hw, i))
+        tk.Label(fr, justify="left", fg="#555", text=(
+            "Мотор (барабан) наматывает нитку - груз поднимается; разматывает - опускается.\n"
+            "Направление задаёт канал Direct_M_1 / Direct_M_2: 1 = подъём, 0 = спуск.\n"
+            "Каждый шаг двигателя смещает груз на 0.25 мм (4 шага = 1 мм); Couster_N считает шаги.\n"
+            "Датчики Place_N_1 (верх), Place_N_2 (середина), Place_N_3 (низ) выдают 1, когда груз напротив.\n"
+            "Ползунком слева можно переставить груз вручную.")).grid(row=1, column=0, columnspan=2, sticky="w", pady=8)
+
     def _build_main(self, parent):
         left = tk.Frame(parent)
         left.pack(side="left", fill="y", padx=(4, 8), pady=4)
@@ -236,6 +400,9 @@ class StandWindow(tk.Toplevel):
             if name in self.leds:
                 cv, item, oncol = self.leds[name]
                 cv.itemconfig(item, fill=oncol if dio[s][c] else LED_OFF)
+        # лифты: моторы, нитки, грузы и датчики Place_N_1..3
+        for v in getattr(self, "hoist_views", []):
+            v.refresh(dio, self._steps_cache)
         self._dirty = False
         self.after(150, self._poll)
 
