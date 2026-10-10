@@ -127,30 +127,33 @@ def segment_value(digit):
     return v
 
 # --------------------------------------------------------------------------- #
-#  Подъёмные механизмы стенда: мотор + груз на нитке + датчики положения.
-#  kind "hoist": аналоговый двигатель ADAM-5024 наматывает/сматывает нитку;
-#    направление задаёт знак скорости (SetMotor(№, +-скорость));
-#    три датчика наличия Place_N_1..3 выдают 1, когда груз напротив них;
-#  kind "stepper_hoist": шаговый двигатель ADAM-5050 (обмотки A..D),
-#    Direct_M_N = направление (0 - сматывает, груз опускается; 1 - наматывает);
-#    шаг двигателя = подъём/опускание груза на STEP_MM мм.
+#  Подъёмные механизмы стенда ("лифты"): аналоговый мотор ADAM-5024 сверху,
+#  груз на нитке, три датчика положения Place_N_1..3 вдоль вертикали.
+#  * привод - Analog_Motor_N (выход ADAM-5024 №N): SetMotor(N, v);
+#    знак скорости задаёт направление: v > 0 - наматывает (груз вверх),
+#    v < 0 - сматывает (груз вниз); |v| = скорость;
+#  * Direct_M_N (канал 5 того же слота ADAM-5050) - дополнительный сигнал
+#    направления (переопределяет знак, если установлен в 1);
+#  * Couster_N считает импульсы (по одному на каждый пройденный миллиметр);
+#  * шаговые двигатели плоттера (обмотки A..D) к лифтам НЕ подключены.
 # --------------------------------------------------------------------------- #
 HOIST_TRAVEL_MM = 180.0     # ход груза вдоль линейки датчиков, мм
-STEP_MM = 0.25              # один шаг ШД = 0.25 мм (4 шага = 1 мм)
+STEP_MM = 0.25              # один шаг ШД = 0.25 мм (4 шага = 1 мм) для плоттера
+HOIST_SPEED_MM_S = 1.5      # груз едет со скоростью |скорость мотора| * этот коэф.
 
 # Груз изначально в самом НИЖНЕМ положении - напротив нижнего датчика Place_N_3.
 HOISTS = [
-    {"name": "Hoist_1", "kind": "stepper_hoist", "slot": 0, "dir_ch": 5,
-     "couster": (0, 6), "coils": (0, 0),        # обмотки A_X..D_X (слот 0, каналы 0..3)
+    {"name": "Hoist_1", "motor_ao": 0, "slot": 0, "dir_ch": 5,
+     "couster": (0, 6),
      "sensors": [(0, 8), (0, 9), (1, 9)],       # Place_1_1 (верх), _1_2, _1_3 (низ)
-     "desc": "Лифт M1: шаговый двигатель X (слот 0, каналы 0..3), "
-             "Direct_M_1 - направление, Couster_1 считает шаги, "
+     "desc": "Лифт M1: Analog_Motor_1 (ADAM-5024, канал 0), "
+             "Direct_M_1 - направление, Couster_1 считает импульсы, "
              "датчики Place_1_1..Place_1_3"},
-    {"name": "Hoist_2", "kind": "stepper_hoist", "slot": 1, "dir_ch": 5,
-     "couster": (1, 6), "coils": (1, 0),        # обмотки A_Y..D_Y (слот 1, каналы 0..3)
+    {"name": "Hoist_2", "motor_ao": 1, "slot": 1, "dir_ch": 5,
+     "couster": (1, 6),
      "sensors": [(1, 10), (1, 11), (0, 10)],    # Place_2_1 (верх), _2_2, _2_3 (низ)
-     "desc": "Лифт M2: шаговый двигатель Y (слот 1, каналы 0..3), "
-             "Direct_M_2 - направление, Couster_2 считает шаги, "
+     "desc": "Лифт M2: Analog_Motor_2 (ADAM-5024, канал 1), "
+             "Direct_M_2 - направление, Couster_2 считает импульсы, "
              "датчики Place_2_1..Place_2_3"},
 ]
 
@@ -211,7 +214,7 @@ class Plotter(object):
         self.spm = steps_per_mm
         self.width = width_mm
         self.height = height_mm
-        self.on_step = on_step      # on_step(motor, d): шаги ШД ещё и тянут груз M2
+        self.on_step = on_step      # on_step(motor, d): вызывается при каждом шаге ШД
         self.axes = [Axis(), Axis()]
         self.pos = [0, 0]
         self.pen_down = False
@@ -267,88 +270,107 @@ class Plotter(object):
 
 
 class Hoist(object):
-    """"Лифт" стенда: шаговый двигатель сверху, груз на нитке, датчики положения.
+    """"Лифт" стенда: аналоговый мотор ADAM-5024 сверху, груз на нитке,
+    три датчика положения Place_N_1..3 вдоль вертикали.
 
     position - высота груза в мм (0 = нижняя точка, travel = верхняя).
-    Привод - шаговый двигатель ADAM-5050 (обмотки A..D):
-      * каждый шаг смещает груз на STEP_MM мм (4 шага = 1 мм);
-      * направление задаёт канал Direct_M_N: 1 = наматывает (груз едет вверх),
-        0 = сматывает (груз опускается);
-      * каждый шаг - импульс на счётчик Couster_N;
-      * три датчика Place_N_1 (верх) / Place_N_2 (середина) / Place_N_3 (низ)
+    Привод - Analog_Motor_N (выход ADAM-5024 №N, SetMotor(N, v)):
+      * знак скорости задаёт направление: v > 0 - наматывает нитку (груз вверх),
+        v < 0 - сматывает (груз вниз); |v| - скорость;
+      * дополнительный сигнал направления - Direct_M_N (канал 5 слота N):
+        если он установлен в 1, направление принудительно "на подъём";
+      * каждый пройденный миллиметр - импульс на счётчик Couster_N;
+      * датчики Place_N_1 (верх) / Place_N_2 (середина) / Place_N_3 (низ)
         выдают 1, когда груз стоит напротив них; изначально груз внизу.
     """
 
     def __init__(self, cfg, hw):
         self.hw = hw
         self.name = cfg["name"]
-        self.kind = cfg["kind"]
         self.sensors = list(cfg["sensors"])       # [верхний, средний, нижний]
         self.travel = HOIST_TRAVEL_MM
         self.position = 0.0                       # старт: НИЖНИЙ датчик (Place_N_3)
-        self.speed = 0.0                          # для аналогового: со знаком
-        self.steps = 0                            # всего сделано шагов (со знаком)
-        self.last_step_ts = 0.0                   # антидребезг счётчика импульсов
-        self.ao_ch = cfg.get("ao_ch")
-        self.slot = cfg.get("slot")
-        self.dir_ch = cfg.get("dir_ch")
-        self.couster = cfg.get("couster")
-        self.coils = cfg.get("coils")             # (slot, first_ch) обмоток A..D
-        self.axis = Axis()                        # считает шаги по состоянию обмоток
-        self._last_steps = 0                      # для индикации скорости мотора
+        self.speed = 0.0                          # последняя заданная скорость, со знаком
+        self.velocity = 0.0                       # фактическая скорость груза, мм/с (со знаком)
+        self.mm_traveled = 0.0                    # одометр: суммарный путь груза, мм
+        self.pulse_rem = 0.0                      # остаток пути до следующего импульса
+        self.slot = cfg.get("slot")               # слот ADAM-5050 с Direct_M_N
+        self.dir_ch = cfg.get("dir_ch")           # канал Direct_M_N
+        self.couster = cfg.get("couster")         # (slot, ch) счётчика Couster_N
+        self.motor_ao = cfg.get("motor_ao")       # канал ADAM-5024 (привод)
         self._sensor_cache = [None, None, None]
 
-    # ---- движение ----
+    # ---- привод ----
+    def set_speed(self, v):
+        """Скорость аналогового мотора (из write_ao / ползунка окна)."""
+        self.speed = max(-100.0, min(100.0, float(v)))
+
+    def direction(self):
+        """+1 вверх / -1 вниз / 0 стоит. Знак скорости + сигнал Direct_M_N."""
+        v = self.speed
+        if not v:
+            return 0
+        sgn = 1 if v > 0 else -1
+        if self.slot is not None and self.dir_ch is not None and \
+                self.hw.dio[self.slot][self.dir_ch]:
+            sgn = 1                     # Direct_M_N = 1 -> принудительно наматывать
+        return sgn
+
     def move(self, dmm):
         if dmm:
             self.position = max(0.0, min(self.travel, self.position + dmm))
 
-    def coils_update(self, bits):
-        """Hardware вызывает при каждом изменении каналов-обмоток этого лифта.
-
-        bits - состояния A,B,C,D (0/1). Переход к соседней фазе = один шаг."""
-        d = self.axis.apply(bits)
-        if d:
-            self.stepper_step(d)
-
-    def stepper_step(self, d):
-        """d = +-1 (или +-2 при перескоке фазы) шагов двигателя."""
-        self.steps += d
-        self.move(d * STEP_MM)
-        self._count_pulse(d)
-
-    def set_speed(self, v):
-        """Скорость мотора для визуализации: число шагов за последний такт."""
-        self.speed = max(-100.0, min(100.0, float(v)))
-
-    def _count_pulse(self, n):
-        """Каждый шаг двигателя = один импульс на счётчик Couster_N.
-
-        Значение канала-счётчика при этом переключается (фронт 0->1), как и
-        полагается счётному входу; программа может сбросить счётчик
-        (ResetCounter / кнопка «Сброс» на стенде)."""
+    def _count_pulses(self, dist_mm):
+        """Один импульс на счётчик Couster_N на каждый пройденный миллиметр."""
         if self.couster is None:
             return
+        self.pulse_rem += dist_mm
+        n = int(self.pulse_rem)
+        if n <= 0:
+            return
+        self.pulse_rem -= n
         self.hw.counters[self.couster] = \
-            self.hw.counters.get(self.couster, 0) + abs(n)
+            self.hw.counters.get(self.couster, 0) + n
         slot, ch = self.couster
         self.hw.dio[slot][ch] = 1 if self.hw.dio[slot][ch] else 0
 
     # ---- физика и датчики ----
+    @property
+    def steps(self):
+        """Импульсов счётчика Couster_N (для подписей в окне)."""
+        if self.couster is None:
+            return int(round(self.mm_traveled))
+        return self.hw.counters.get(self.couster, 0)
+
     def tick(self, dt):
-        """Вызывается из Hardware._tick(): обновить индикацию скорости мотора."""
-        moved = abs(self.steps - self._last_steps)
-        self._last_steps = self.steps
-        self.set_speed(moved / max(dt, 1e-6) * 0.5)   # сглаженная "оборотистость"
+        """Вызывается из Hardware._tick(): мотор крутится - груз едет."""
+        d = self.direction()
+        if not d or dt <= 0:
+            self.velocity = 0.0
+            return False
+        vmax = abs(self.speed) * HOIST_SPEED_MM_S      # мм/с
+        p0 = self.position
+        self.move(d * vmax * dt)
+        dist = abs(self.position - p0)
+        self.mm_traveled += dist
+        self.velocity = d * vmax
+        if dist:
+            self._count_pulses(dist)
+        return self.position != p0
 
     def update_sensors(self, dio):
-        """Датчик выдаёт 1, если груз напротив него (плюс-минут зона срабатывания)."""
+        """Датчик выдаёт 1, если груз напротив него (плюс-минут зона срабатывания).
+
+        Возвращает True, если состояние хотя бы одного датчика изменилось."""
+        changed = False
         for i, (slot, ch) in enumerate(self.sensors):
             h = self.travel * (1.0 - i / 2.0)      # 1-й сверху, 3-й снизу
             on = 1 if abs(self.position - h) <= 7.0 else 0
             if self._sensor_cache[i] != on:
                 self._sensor_cache[i] = on
                 dio[slot][ch] = on
+                changed = True
+        return changed
 
 
 class Thermistor(object):
@@ -400,7 +422,7 @@ class Hardware:
         # ---- стенд ----
         self.counters = {(0, 6): 0, (1, 6): 0}     # Couster_1, Couster_2
         self.seg_digit = None                      # цифра на индикаторе или None
-        # грузы на нитках: M1 - аналоговый мотор, M2 - шаговый двигатель
+        # грузы на нитках: привод - аналоговые моторы ADAM-5024 (AO0/AO1)
         self.hoists = [Hoist(cfg, self) for cfg in HOISTS]
         # терморезисторы: Thermistor_1 греется AO0 и охлаждается вентилятором Cool;
         # Thermistor_2 - "экстремальный": его же охладитель Cool_Extreme (AO3)
@@ -424,9 +446,15 @@ class Hardware:
         self._tick()
 
     def _plotter_step(self, motor, d):
-        """Шаг шагового двигателя плоттера: двигатель Y тянет груз M2 на стенде."""
-        if motor == 1:
-            self.hoists[1].stepper_step(d)
+        """Шаг шагового двигателя плоттера (обмотки к лифтам не подключены)."""
+        pass
+
+    def _hoist_speed(self, ch):
+        """Скорость привода лифта с мотором на канале ADAM-5024 №ch."""
+        for h in self.hoists:
+            if h.motor_ao == ch:
+                return h.speed
+        return 0.0
 
     def _tick(self):
         now = time.time()
@@ -434,18 +462,21 @@ class Hardware:
         self._t = now
         changed = False
         with self.lock:
-            # аналоговые двигатели: скорость 0..100 -> обороты
-            for m in self.motors.values():
-                if m["speed"]:
-                    m["angle"] += m["speed"] * 3.6 * dt
+            # аналоговые двигатели: скорость 0..100 -> обороты;
+            # приводы лифтов берут скорость оттуда же (со знаком)
+            for ch, m in self.motors.items():
+                sp = self._hoist_speed(ch) or m["speed"]
+                m["speed"] = sp
+                if sp:
+                    m["angle"] += sp * 3.6 * dt
                     changed = True
             # грузы на нитках: наматывание/сматывание + датчики положения
             for h in self.hoists:
                 p0 = h.position
-                h.tick(dt)
-                if h.position != p0:
+                if h.tick(dt):
                     changed = True
-                h.update_sensors(self.dio)
+                if h.update_sensors(self.dio):
+                    changed = True
         # терморезисторы: нагрев от выходов ADAM-5024, остывание (вент. Cool ускоряет)
         fan = bool(self.dio[1][12])
         for t in self.thermistors:
@@ -512,28 +543,19 @@ class Hardware:
             raise HwError("неверный номер канала %d" % ch)
 
     def _set_bits(self, slot, bits):
-        """bits: {канал: 0/1}. Сначала меняем все биты, потом оповещаем лифты/плоттер.
+        """bits: {канал: 0/1}. Сначала меняем все биты, потом пересчитываем плоттер.
 
-        Каждый шаг обмоток (A..D) одновременно:
-          * тянет нитку соответствующего "лифта" - груз смещается (4 шага = 1 мм);
-          * двигает каретку плоттера (тот же двигатель используется для рисования)."""
+        Обмотки A..D (шаговые двигатели) подключены только к плоттеру;
+        грузы "лифтов" двигаются аналоговыми моторами ADAM-5024 (см. write_ao)."""
         for ch, v in bits.items():
             self.dio[slot][ch] = 1 if v else 0
         # счётчики Couster_N считают импульсы, если канал 6 меняется вручную
-        if 6 in bits and (slot, 6) in self.counters and \
-                not any(h.couster == (slot, 6) for h in self.hoists):
+        if 6 in bits and (slot, 6) in self.counters:
             self.counters[(slot, 6)] += 1
         moved = False
         if slot in (0, 1) and any(c < 4 for c in bits):
-            coil_bits = self.dio[slot][0:4]
-            for h in self.hoists:                    # лифт этого же двигателя
-                if h.coils and h.coils[0] == slot:
-                    p0 = h.position
-                    h.coils_update(coil_bits)
-                    if h.position != p0:
-                        moved = True
             if self.plotter_attached:
-                d = self.plotter.motor_update(slot, coil_bits)
+                d = self.plotter.motor_update(slot, self.dio[slot][0:4])
                 if d:
                     moved = True
         if slot == 0 and 4 in bits and self.plotter_attached:
@@ -570,7 +592,7 @@ class Hardware:
         self.counters[(slot, 6)] = 0
         for h in self.hoists:
             if h.couster == (slot, 6):
-                h.steps = 0
+                h.pulse_rem = 0.0
         self._notify()
 
     def pulse_counter(self, slot):
@@ -678,9 +700,9 @@ class Hardware:
             m = self.motors.get(ch)
             if m is not None:
                 m["speed"] = max(-100.0, min(100.0, v))
-            # тот же выход приводит в движение груз на нитке (Hoist_1)
+            # тот же выход приводит в движение груз на нитке ("лифт")
             for h in self.hoists:
-                if h.kind == "hoist" and h.ao_ch == ch:
+                if h.motor_ao == ch:
                     h.set_speed(v)
         elif kind == "speaker":                  # Speaker: частота тона, Гц
             self.speaker_hz = max(0.0, v)
@@ -724,22 +746,12 @@ class Hardware:
     def set_hoist_position(self, n, mm):
         """Ручная установка высоты груза (ползунок в окне стенда), мм.
 
-        Заодно подтягиваем счётчик шагов Couster_N и позицию каретки
-        плоттера, чтобы модель оставалась непротиворечивой."""
+        Счётчик Couster_N при этом не трогается - он считает реальный путь
+        груза от момента последнего сброса."""
         h = self.hoist(n)
         with self.lock:
             h.position = max(0.0, min(h.travel, float(mm)))
-            steps = int(round(h.position / STEP_MM))
-            if h.couster is not None:
-                self.counters[h.couster] = abs(steps)
-            if h.coils is not None and self.plotter_attached:
-                m = h.coils[0]
-                h.axis.phase = None
-                h.axis.last_dir = 1
-                h.axis.skipped = 0
-                self.plotter.axes[m].phase = None
-                self.plotter.pos[m] = steps
-                self.plotter.hit_limit = False
+            h.velocity = 0.0
             h.update_sensors(self.dio)
         self._notify()
 

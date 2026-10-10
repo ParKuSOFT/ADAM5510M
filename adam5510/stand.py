@@ -27,9 +27,10 @@ LED_ON = {
 LED_OFF = "#d8d8d8"
 
 # --------------------------------------------------------------------------- #
-#  Визуализация "лифтов": мотор сверху, груз на нитке снизу, три датчика.
+#  Визуализация "лифтов": аналоговый мотор ADAM-5024 сверху, груз на нитке,
+#  три датчика положения Place_N_1..3. Направление задаёт знак скорости
+#  (SetMotor(N, +-v)), сигнал Direct_M_N добавляет индикацию направления.
 # --------------------------------------------------------------------------- #
-PHASE_SEQ = [(1, 0, 0, 1), (1, 1, 0, 0), (0, 1, 1, 0), (0, 0, 1, 1)]
 
 
 class HoistView(object):
@@ -41,19 +42,20 @@ class HoistView(object):
     LINE_X = 150                # вертикальная линия нитки
     TRAVEL_PX = 300             # ход груза в пикселах
     LOAD_W, LOAD_H = 46, 30     # размер груза
-    SENSOR_ZONE_PX = 12         # зона срабатывания датчика (≈7 мм модели)
 
     def __init__(self, cv, hw, index):
         self.cv, self.hw, self.index = cv, hw, index
         h = hw.hoists[index]
-        self.title = "Лифт M%d — ШД %s" % (index + 1, "X" if index == 0 else "Y")
+        self.title = "Лифт M%d — Analog_Motor_%d" % (index + 1, index + 1)
         x = self.LINE_X
         top = self.TOP_Y
         bot = top + self.TRAVEL_PX
 
-        cv.create_text(135, 12, text=self.title, anchor="w", font=("TkDefaultFont", 10, "bold"))
+        cv.create_text(135, 12, text=self.title, anchor="w",
+                       font=("TkDefaultFont", 10, "bold"))
         cv.create_text(135, 28, anchor="w", fill="#666",
-                       text="шаг = %.2f мм (4 шага = 1 мм)" % STEP_MM)
+                       text="ADAM-5024 кн.%d, Direct_M_%d — направление"
+                            % (h.motor_ao, index + 1))
 
         # ---- мотор (барабан) сверху ----
         cx, cy, r = x, self.MOTOR_CY, 22
@@ -62,13 +64,13 @@ class HoistView(object):
         self.spokes = [cv.create_line(cx, cy, cx, cy - r + 4, fill="#777", width=2)
                        for _ in range(4)]
         cv.create_oval(cx - 3, cy - 3, cx + 3, cy + 3, fill="#555", outline="")
-        # индикатор работы мотора (горит/мигает, когда программа крутит обмотки)
+        # индикатор работы мотора (горит, когда программа крутит двигатель)
         self.motor_led = cv.create_oval(x + 40, cy - 8, x + 56, cy + 8,
-                                        fill=LED_OFF, outline="#888")
-        cv.create_text(x + 48, cy + 22, text="M", fill="#666")
+                                       fill=LED_OFF, outline="#888")
+        self.motor_txt = cv.create_text(x + 48, cy + 22, text="стоп", fill="#666")
         # направление вращения (стрелка вокруг барабана)
         self.arrow = cv.create_arc(cx - r - 8, cy - r - 8, cx + r + 8, cy + r + 8,
-                                   start=40, extent=90, style="arc", outline="#2b7de9",
+                                   start=40, extent=90, style="arc", outline="#c0c0c0",
                                    width=2)
 
         # ---- рамка и нитка ----
@@ -131,15 +133,15 @@ class HoistView(object):
                        x + self.LOAD_W / 2.0, y + self.LOAD_H / 2.0)
         self.cv.coords(self.load_txt, x, y)
 
-        # мотор: крутится ли? (шаги с прошлого опроса)
-        moved = abs(h.steps - steps_cache.get(self.index, h.steps))
-        steps_cache[self.index] = h.steps
-        if moved:
-            self._angle = (getattr(self, "_angle", 0.0) + moved * 30.0) % 360.0
-            self._blink = not getattr(self, "_blink", False)
-        col = ("#60e060" if getattr(self, "_blink", False) else "#1e9e3a") \
-            if moved else LED_OFF
+        # мотор: скорость со знаком (Analog_Motor_N), едет ли груз?
+        moving = abs(h.velocity) > 0.05
+        if moving:
+            self._angle = (getattr(self, "_angle", 0.0)
+                           + h.velocity * 2.0) % 360.0
+        col = "#1e9e3a" if moving else LED_OFF
         self.cv.itemconfig(self.motor_led, fill=col)
+        self.cv.itemconfig(self.motor_txt,
+                           text="v=%+.0f" % h.speed if h.speed else "стоп")
         # спицы барабана
         cx, cy, r = x, self.MOTOR_CY, 22
         a0 = getattr(self, "_angle", 0.0)
@@ -147,11 +149,12 @@ class HoistView(object):
             a = math.radians(a0 + k * 90.0)
             self.cv.coords(sp, cx, cy, cx + (r - 4) * math.sin(a),
                            cy - (r - 4) * math.cos(a))
-        # стрелка направления: Direct_M_* = 1 -> подъём (по часовой)
-        d = dio[h.slot][h.dir_ch]
+        # стрелка направления: вверх при подъёме (скорость > 0 или Direct_M_N = 1)
+        d = h.direction()
         self.cv.itemconfig(self.arrow,
-                           start=40 if d else 130, extent=90 if d else -90,
-                           outline="#2b7de9" if moved else "#c0c0c0")
+                           start=40 if d >= 0 else 130,
+                           extent=90 if d >= 0 else -90,
+                           outline="#2b7de9" if d else "#c0c0c0")
 
         # датчики
         for (slot, ch, body, led) in self.sensors:
@@ -161,8 +164,9 @@ class HoistView(object):
             self.cv.itemconfig(body, fill="#ffe2d6" if on else "#dfe6ee")
 
         self.cv.itemconfig(self.pos_lbl,
-                           text="высота %.1f мм · шагов: %d" % (h.position, h.steps))
-        if abs(self.slider.get() - h.position) > STEP_MM:
+                           text="высота %.1f мм · путь %.0f мм · имп.: %d"
+                                % (h.position, h.mm_traveled, h.steps))
+        if abs(self.slider.get() - h.position) > 0.5:
             self._updating_slider = True
             self.slider.set(int(round(h.position)))
             self._updating_slider = False
@@ -218,8 +222,9 @@ class StandWindow(tk.Toplevel):
             self.hoist_views.append(HoistView(cv, self.hw, i))
         tk.Label(fr, justify="left", fg="#555", text=(
             "Мотор (барабан) наматывает нитку - груз поднимается; разматывает - опускается.\n"
-            "Направление задаёт канал Direct_M_1 / Direct_M_2: 1 = подъём, 0 = спуск.\n"
-            "Каждый шаг двигателя смещает груз на 0.25 мм (4 шага = 1 мм); Couster_N считает шаги.\n"
+            "Привод - аналоговый двигатель Analog_Motor_1/2 (ADAM-5024): SetMotor(N, v),\n"
+            "v > 0 - подъём, v < 0 - спуск, |v| - скорость. Direct_M_N = 1 тоже задаёт подъём.\n"
+            "Couster_N получает по импульсу на каждый пройденный грузом миллиметр.\n"
             "Датчики Place_N_1 (верх), Place_N_2 (середина), Place_N_3 (низ) выдают 1, когда груз напротив.\n"
             "Ползунком слева можно переставить груз вручную.")).grid(row=1, column=0, columnspan=2, sticky="w", pady=8)
 
