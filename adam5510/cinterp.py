@@ -77,18 +77,65 @@ _MATH_PROTO_LINES = _MATH_PROTOTYPES.count("\n") + 1
 #  Данные времени выполнения
 # --------------------------------------------------------------------------- #
 class Ptr(object):
-    """Указатель: список-хранилище + индекс."""
-    __slots__ = ("lst", "idx", "ct")
+    """Указатель: список-хранилище + индекс (+ форма для многомерных массивов)."""
+    __slots__ = ("lst", "idx", "ct", "shape")
 
-    def __init__(self, lst, idx, ct):
-        self.lst, self.idx, self.ct = lst, idx, ct
+    def __init__(self, lst, idx, ct, shape=None):
+        self.lst, self.idx, self.ct, self.shape = lst, idx, ct, shape
+
+
+def flatten_init(init, dims):
+    """Разворачивает инициализатор {..,{..}} в плоский список по размерам dims.
+    init может быть списком значений/списков (вложенность произвольная) или
+    строкой (для char-массивов)."""
+    if isinstance(init, str):
+        vals = [ord(c) & 0xFF for c in init] + [0]
+        return _fit_flat(vals, dims)
+    if not isinstance(init, (list, tuple)):
+        return [init]
+    if len(dims) <= 1:
+        return list(init)
+    out = []
+    block = int(_dim_prod(dims[1:]))
+    for part in init:
+        sub = flatten_init(part, dims[1:])
+        if len(sub) > block:
+            raise RunError("слишком много значений в инициализаторе массива")
+        out.extend(sub)
+        out.extend([0] * (block - len(sub)))     # недостающие элементы строки = 0
+    return out
+
+
+def _dim_prod(dims):
+    p = 1
+    for d in dims:
+        p *= d
+    return p
+
+
+def _fit_flat(vals, dims):
+    total = _dim_prod(dims) if dims else None
+    if total is not None and len(vals) > total:
+        raise RunError("слишком много значений для массива")
+    if total is not None:
+        vals = list(vals) + [0] * (total - len(vals))
+    return list(vals)
 
 
 class Var(object):
-    __slots__ = ("data", "ct", "arr")
+    __slots__ = ("data", "ct", "arr", "dims")
 
-    def __init__(self, data, ct, arr):
-        self.data, self.ct, self.arr = data, ct, arr
+    def __init__(self, data, ct, arr, dims=None):
+        self.data, self.ct, self.arr, self.dims = data, ct, arr, dims or []
+
+
+class ArrRef(object):
+    """Параметр-массив (int m[][4]): базовый Ptr + размеры из объявления.
+    Неизвестные (пустые) размеры берутся из формы переданного массива."""
+    __slots__ = ("base", "dim_nodes")
+
+    def __init__(self, base, dim_nodes):
+        self.base, self.dim_nodes = base, dim_nodes
 
 
 class Frame(object):
@@ -210,26 +257,239 @@ def strip_comments(src):
     return "".join(out)
 
 
+_OBJLIKE_RE = re.compile(r"#\s*define\s+([A-Za-z_]\w*)\s*(.*)$")
+_FUNC_RE = re.compile(r"#\s*define\s+([A-Za-z_]\w*)\(([^)]*)\)\s*(.*)$")
+
+
+def _split_macro_args(s):
+    """Разбивает строку по запятым верхнего уровня (скобки/строки учитываются)."""
+    args, depth, cur, q = [], 0, "", None
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if q:
+            cur += c
+            if c == "\\" and i + 1 < len(s):
+                cur += s[i + 1]
+                i += 2
+                continue
+            if c == q:
+                q = None
+        elif c in "\"'":
+            q = c
+            cur += c
+        elif c in "([{":
+            depth += 1
+            cur += c
+        elif c in ")]}":
+            depth -= 1
+            cur += c
+        elif c == "," and depth == 0:
+            args.append(cur.strip())
+            cur = ""
+        else:
+            cur += c
+        i += 1
+    args.append(cur.strip())
+    return args
+
+
+def _macro_call_at(text, name, i):
+    """Если в позиции i начинается вызов макроса name(...), возвращает
+    (индекс конца строки включительно, список аргументов) либо None.
+    Аргументы могут занимать несколько строк (как в настоящем С)."""
+    j = i + len(name)
+    while j < len(text) and text[j] in " \t":
+        j += 1
+    if j >= len(text) or text[j] != "(":
+        return None
+    depth, k, cur, q, args = 0, j + 1, "", None, []
+    n = len(text)
+    while k < n:
+        c = text[k]
+        if q:
+            cur += c
+            if c == "\\" and k + 1 < n:
+                cur += text[k + 1]
+                k += 2
+                continue
+            if c == q:
+                q = None
+        elif c in "\"'":
+            q = c
+            cur += c
+        elif c in "([{":
+            depth += 1
+            cur += c
+        elif c in ")]}":
+            depth -= 1
+            if depth == 0:
+                break
+            cur += c
+        elif c == "," and depth == 0:
+            args.append(cur.strip())
+            cur = ""
+        else:
+            cur += c
+        k += 1
+    if k >= n or depth != 0:
+        return None                     # незакрытая скобка - не считаем вызовом
+    if cur.strip() or args:
+        args.append(cur.strip())
+    end = k                             # позиция закрывающей ')'
+    nl = text.find("\n", end)
+    return (n if nl < 0 else nl), args
+
+
+def _expand_macros(text, obj, fn_noarg, fn_arg):
+    """Подстановка макросов (объектоподобных и функцеподобных) с защитой от
+    рекурсии: текст подстановки повторно сканируется, но сам макрос в нём
+    раскрывается только если пришёл не из своей же подстановки."""
+    names = sorted(set(list(obj) + list(fn_arg) + list(fn_noarg)), key=len, reverse=True)
+    if not names:
+        return text
+    pat = re.compile(r"\b(%s)\b" % "|".join(re.escape(n) for n in names))
+    out, i, stack = [], 0, set()
+    while True:
+        m = pat.search(text, i)
+        if m is None:
+            out.append(text[i:])
+            break
+        name = m.group(1)
+        out.append(text[i:m.start()])
+        if name in stack:               # рекурсивная подстановка - оставляем как есть
+            out.append(name)
+            i = m.end()
+            continue
+        if name in fn_arg:
+            res = _macro_call_at(text, name, m.start())
+            if res is None:             # без скобок - это не вызов макроса
+                out.append(name)
+                i = m.end()
+                continue
+            end, raw = res
+            params = fn_arg[name][0]
+            body = fn_arg[name][1]
+            passed = [_expand_macros(a, obj, fn_noarg,
+                                     {p: v for p, v in fn_arg.items() if p != name})
+                      for a in raw]
+            sub = dict(zip(params, passed))
+            for p in params[len(passed):]:
+                sub[p] = ""
+            repl = _apply_text(body, sub)
+            repl = _expand_macros(repl, obj, fn_noarg,
+                                  {p: v for p, v in fn_arg.items() if p != name})
+            out.append(repl)
+            i = end + 1
+            continue
+        if name in fn_noarg:
+            body = fn_noarg[name]
+            stack.add(name)
+            repl = _expand_macros(body, obj,
+                                  {p: v for p, v in fn_noarg.items() if p != name},
+                                  {p: v for p, v in fn_arg.items() if p != name})
+            stack.discard(name)
+            out.append(repl)
+            i = m.end()
+            continue
+        val = obj[name]
+        stack.add(name)
+        repl = _expand_macros(val, obj,
+                              {p: v for p, v in fn_noarg.items() if p != name},
+                              {p: v for p, v in fn_arg.items() if p != name})
+        stack.discard(name)
+        out.append(repl)
+        i = m.end()
+    return "".join(out)
+
+
+def _apply_text(body, sub):
+    """Замена параметров макроса на фактические аргументы (с '#param' -> "аргумент")."""
+    if not sub:
+        return body
+    pat = re.compile(r"(#)?\b(%s)\b" % "|".join(re.escape(p) for p in sub))
+
+    def rep(m):
+        p = m.group(2)
+        v = sub.get(p)
+        if v is None:
+            return m.group(0)
+        if m.group(1):                  # строкаизация: #x -> "текст аргумента"
+            return '"%s"' % v.replace("\\", "\\\\").replace('"', '\\"')
+        return "(%s)" % v if (" " in v.strip() or "|" in v or "&" in v or
+                              "," in v.strip()) else v
+    return pat.sub(rep, body)
+
+
 def preprocess(src):
-    """Убирает комментарии и директивы, сохраняя номера строк."""
+    """Убирает комментарии и директивы, сохраняя номера строк.
+
+    Поддерживаются #define без параметров и функциональные макросы
+    (#define SQ(x) ((x)*(x))), а также #undef / #ifdef / #ifndef / #else /
+    #endif (без вложенных условных блоков внутри).
+    """
     src = strip_comments(src.replace("\r\n", "\n").replace("\r", "\n"))
     lines = src.split("\n")
-    macros, errors = {}, []
+    obj, fn_noarg, fn_arg, errors = {}, {}, {}, []
+    keep, seen_else, cond_stack = [], None, []
+
+    def _val_of(expr):
+        expr = expr.strip()
+        if re.match(r"^-?\d+$", expr):
+            return int(expr)
+        return 1 if expr in obj or expr in fn_arg or expr in fn_noarg else 0
+
     for k, line in enumerate(lines):
         s = line.strip()
+        skip = not all(keep) if keep else False
         if s.startswith("#"):
-            m = re.match(r"#\s*define\s+([A-Za-z_]\w*)(.*)$", s)
-            if m:
-                rest = m.group(2)
-                if rest.startswith("("):
-                    errors.append((k + 1, "макросы с параметрами не поддерживаются"))
+            mm = re.match(r"#\s*(\w+)", s)
+            cmd = mm.group(1) if mm else ""
+            if cmd == "ifdef" and not skip:
+                keep.append(_val_of(s[6:]) == 1)
+                cond_stack.append(False)
+            elif cmd == "ifndef" and not skip:
+                keep.append(_val_of(s[7:]) == 0)
+                cond_stack.append(False)
+            elif cmd == "if" and not skip:
+                keep.append(bool(_val_of(s[3:])))
+                cond_stack.append(False)
+            elif cmd == "else" and cond_stack:
+                keep[-1] = not keep[-1]
+                cond_stack[-1] = True
+            elif cmd == "endif" and cond_stack:
+                cond_stack.pop()
+                keep.pop()
+            elif not skip:
+                fm = _FUNC_RE.match(s)
+                om = _OBJLIKE_RE.match(s)
+                if fm:
+                    name = fm.group(1)
+                    params = [p.strip() for p in fm.group(2).split(",") if p.strip()]
+                    body = fm.group(3).strip()
+                    if not params:
+                        fn_noarg[name] = body
+                    else:
+                        fn_arg[name] = (params, body)
+                elif om and om.group(2).strip():
+                    obj[om.group(1)] = om.group(2).strip()
+                elif om:
+                    obj[om.group(1)] = "1"
+                elif cmd == "undef" and not skip:
+                    nm = s[5:].strip()
+                    obj.pop(nm, None)
+                    fn_arg.pop(nm, None)
+                    fn_noarg.pop(nm, None)
+                elif cmd in ("include", "pragma", "error", "warning", "line"):
+                    pass
                 else:
-                    macros[m.group(1)] = rest.strip()
+                    errors.append((k + 1, "директива '%s' не поддерживается" % cmd))
             lines[k] = ""
-    for name, val in macros.items():
-        pat = re.compile(r"\b%s\b" % re.escape(name))
-        lines = [pat.sub(val, ln) for ln in lines]
+            continue
+        if skip:
+            lines[k] = ""
     text = "\n".join(lines)
+    text = _expand_macros(text, obj, fn_noarg, fn_arg)
     return text, errors
 
 
@@ -734,8 +994,24 @@ class UserFunc(object):
         if ft.args is not None:
             for p in ft.args.params:
                 if isinstance(p, c_ast.Decl) and p.name:
-                    self.params.append((p.name, type_kind(p.type)))
+                    dims = None
+                    if isinstance(p.type, c_ast.ArrayDecl):
+                        base_t, dim_nodes = _array_type(p.type)
+                        dims = [dn for dn in dim_nodes]   # узлы размеров (для strides)
+                        pt = base_t
+                    else:
+                        pt = p.type
+                    self.params.append((p.name, type_kind(pt), pt, dims))
         self.body = node.body
+
+
+def _array_type(t):
+    """ArrayDecl(ArrayDecl(...)) -> (базовый тип, [узлы размеров])."""
+    dims = []
+    while isinstance(t, c_ast.ArrayDecl):
+        dims.append(t.dim)
+        t = t.type
+    return t, dims
 
 
 class Program(object):
@@ -794,10 +1070,19 @@ class Program(object):
         except RunError as e:
             errs.append((d.coord.line, e.msg))
         if d.init is not None:
-            self._chk(d.init, [set()], errs)
+            self._chk_init(d.init, [set([d.name] + list(self.global_names)
+                                        if False else [d.name])], errs)
+
+    def _chk_init(self, n, scopes, errs):
+        """Инициализатор массива: вложенные {..} - это не выражения."""
+        if isinstance(n, c_ast.InitList):
+            for e in n.exprs:
+                self._chk_init(e, scopes, errs)
+            return
+        self._chk(n, scopes, errs)
 
     def _check_func(self, f, errs):
-        scopes = [set(n for n, _ in f.params)]
+        scopes = [set(p[0] for p in f.params)]
         self._chk(f.body, scopes, errs)
 
     def _known(self, name, scopes):
@@ -963,32 +1248,65 @@ class Interpreter(object):
             raise
 
     # ---- переменные ----
+    def _array_type(self, t):
+        """Разворачивает ArrayDecl(ArrayDecl(...)) в (базовый тип, [размеры])."""
+        dims = []
+        while isinstance(t, c_ast.ArrayDecl):
+            dims.append(t.dim)
+            t = t.type
+        return t, dims
+
     def make_var(self, d, fr):
         t = d.type
         init = d.init
         if isinstance(t, c_ast.ArrayDecl):
-            kind = type_kind(t.type)
-            size = int(self.ev(t.dim, fr)) if t.dim is not None else None
+            base_t, dim_nodes = self._array_type(t)
+            kind = type_kind(base_t)
+            dims = []
+            for dn in dim_nodes:
+                if dn is None:
+                    dims.append(None)
+                else:
+                    v = self.ev(dn, fr)
+                    if isinstance(v, str) or not isinstance(v, (int, float)):
+                        raise RunError("размер массива '%s' должен быть числом" % d.name)
+                    if int(v) <= 0:
+                        raise RunError("неверный размер массива '%s'" % d.name)
+                    dims.append(int(v))
+            vals = []
             if isinstance(init, c_ast.InitList):
-                vals = [coerce(kind, self.ev(e, fr)) for e in init.exprs]
+                vals = flatten_init(self._init_tree(init, fr), dims)
             elif isinstance(init, c_ast.Constant) and init.type == "string":
-                vals = [ord(c) & 0xFF for c in unescape(init.value[1:-1])] + [0]
+                vals = flatten_init(unescape(init.value[1:-1]), dims)
             elif init is None:
-                vals = []
-            else:
-                raise RunError("неверный инициализатор массива '%s'" % d.name)
-            if size is None:
+                pass
+            else:                       # одно значение - в начало (как в C)
+                vals = flatten_init([coerce(kind, self.ev(init, fr))], dims)
+            if dims and dims[0] is None:
                 if not vals:
                     raise RunError("не указан размер массива '%s'" % d.name)
-                size = len(vals)
-            if len(vals) > size:
+                rest = _dim_prod([x for x in dims[1:] if x is not None]) \
+                    if len(dims) > 1 else 1
+                if len(dims) > 1 and rest and len(vals) % rest:
+                    raise RunError("не удалось определить размер массива '%s'" % d.name)
+                dims[0] = max(1, len(vals) // rest) if rest else len(vals)
+            if any(x is None for x in dims):
+                raise RunError("не указан размер массива '%s'" % d.name)
+            total = _dim_prod(dims)
+            if len(vals) > total:
                 raise RunError("слишком много значений для массива '%s'" % d.name)
-            return Var(vals + [zero(kind)] * (size - len(vals)), kind, True)
+            return Var(vals + [zero(kind)] * (total - len(vals)), kind, True, list(dims))
         kind = type_kind(t)
         v = zero(kind) if kind != "ptr" else 0
         if init is not None:
             v = coerce(kind, self.ev(init, fr))
         return Var([v], kind, False)
+
+    def _init_tree(self, n, fr):
+        """Инициализатор -> Python: список (возможно вложенный) или скаляр."""
+        if isinstance(n, c_ast.InitList):
+            return [self._init_tree(e, fr) for e in n.exprs]
+        return self.ev(n, fr)
 
     def find(self, fr, name):
         sc = fr.scopes
@@ -1006,8 +1324,12 @@ class Interpreter(object):
             raise RunError("переполнение стека (слишком глубокая рекурсия)")
         nf = Frame()
         sc = {}
-        for (pn, kind), a in zip(f.params, args):
-            sc[pn] = Var([coerce(kind, a)], kind, False)
+        for (pn, kind, ptype, dims), a in zip(f.params, args):
+            if dims is not None and isinstance(a, Ptr):
+                # параметр-массив: размеры из объявления + форма аргумента
+                sc[pn] = Var([ArrRef(a, dims)], kind, False)
+            else:
+                sc[pn] = Var([coerce(kind, a)], kind, False)
         nf.scopes.append(sc)
         self.depth += 1
         ret = 0
@@ -1036,8 +1358,26 @@ class Interpreter(object):
                 return CONSTS[n.name]
             raise RunError("неизвестная переменная '%s'" % n.name)
         if v.arr:
-            return Ptr(v.data, 0, v.ct)
+            return Ptr(v.data, 0, v.ct, list(v.dims))
+        if isinstance(v.data[0], ArrRef):       # параметр-массив -> как указатель
+            ar = v.data[0]
+            return Ptr(ar.base.lst, ar.base.idx, v.ct, self._arr_shape(ar, fr))
         return v.data[0]
+
+    def _arr_shape(self, ar, fr):
+        """Размеры параметра-массива: из объявления; пустые - из формы аргумента."""
+        shape = []
+        for dn in ar.dim_nodes:
+            if dn is None:
+                shape.append(None)
+            else:
+                v = self.ev(dn, fr)
+                shape.append(int(v))
+        arg = ar.base.shape or []
+        for i in range(len(shape)):
+            if shape[i] is None:
+                shape[i] = arg[i] if i < len(arg) else 1
+        return shape
 
     def ev_Constant(self, n, fr):
         c = self._cc.get(n)
@@ -1092,6 +1432,7 @@ class Interpreter(object):
             raise RunError("%s: %s" % (name, e))
 
     def lval(self, n, fr):
+        """Возвращает (список-хранилище, индекс элемента, тип) - адрес скаляра."""
         t = n.__class__
         if t is c_ast.ID:
             v = self.find(fr, n.name)
@@ -1101,14 +1442,10 @@ class Interpreter(object):
                 raise RunError("нельзя присвоить значение массиву '%s'" % n.name)
             return v.data, 0, v.ct
         if t is c_ast.ArrayRef:
-            base = self.ev(n.name, fr)
-            i = self.ev(n.subscript, fr)
-            if not isinstance(base, Ptr) or isinstance(i, (Ptr, str)):
-                raise RunError("индексация не массива")
-            k = base.idx + int(i)
-            if not 0 <= k < len(base.lst):
-                raise RunError("выход за границы массива (индекс %d)" % int(i))
-            return base.lst, k, base.ct
+            p = self._subscript(n, fr)
+            if not 0 <= p.idx < len(p.lst):
+                raise RunError("выход за границы массива")
+            return p.lst, p.idx, p.ct
         if t is c_ast.UnaryOp and n.op == "*":
             p = self.ev(n.expr, fr)
             if not isinstance(p, Ptr):
@@ -1117,6 +1454,47 @@ class Interpreter(object):
                 raise RunError("выход за границы массива")
             return p.lst, p.idx, p.ct
         raise RunError("недопустимое выражение слева от присваивания")
+
+    def _subscript(self, n, fr):
+        """Цепочка a[i][j]... -> Ptr на элемент (или подсечение при неполной
+        индексации, как &a[i] в C)."""
+        idxs = []
+        box = {}
+
+        def collect(x):
+            if isinstance(x, c_ast.ArrayRef):
+                collect(x.name)
+                idxs.append(x.subscript)
+            else:
+                box["base"] = x
+
+        collect(n)
+        base = self.ev(box["base"], fr)
+        if not isinstance(base, Ptr):
+            raise RunError("индексация не массива")
+        offs = []
+        for sub in idxs:
+            i = self.ev(sub, fr)
+            if isinstance(i, (Ptr, str)):
+                raise RunError("неверный индекс массива")
+            offs.append(int(i))
+        shape = list(base.shape or [])
+        k = base.idx
+        if len(shape) <= 1:                 # одномерный массив или указатель
+            if len(offs) != 1:
+                raise RunError("неверное число индексов")
+            return Ptr(base.lst, k + offs[0], base.ct)
+        if len(offs) > len(shape):
+            raise RunError("слишком много индексов (индексация не массива)")
+        rem = shape[len(offs):]
+        stride = _dim_prod(rem)
+        for d in offs:
+            k += d * stride
+        if not 0 <= offs[0] < shape[0]:
+            raise RunError("выход за границы массива (индекс %d)" % offs[0])
+        if rem:                             # частичная индексация -> подсечение
+            return Ptr(base.lst, k, base.ct, list(rem))
+        return Ptr(base.lst, k, base.ct)
 
     def ev_ArrayRef(self, n, fr):
         lst, k, _ = self.lval(n, fr)
@@ -1139,7 +1517,15 @@ class Interpreter(object):
                 v = self.find(fr, e.name)
                 if v is None:
                     raise RunError("неизвестная переменная '%s'" % e.name)
-                return Ptr(v.data, 0, v.ct)
+                if isinstance(v.data[0], ArrRef):   # &m параметра-массива
+                    ar = v.data[0]
+                    return Ptr(ar.base.lst, ar.base.idx, v.ct,
+                               self._arr_shape(ar, fr))
+                return Ptr(v.data, 0, v.ct, list(v.dims) if v.arr else None)
+            if e.__class__ is c_ast.ArrayRef:
+                # &a[i][j] - как в C: при неполной индексации многомерного
+                # массива это указатель на подсечение (строку)
+                return self._subscript(e, fr)
             lst, k, kind = self.lval(e, fr)
             return Ptr(lst, k, kind)
         if op == "*":
@@ -1154,14 +1540,29 @@ class Interpreter(object):
             return old if op[0] == "p" else new
         if op == "sizeof":
             e = n.expr
+            elem = {"char": 1, "uchar": 1, "short": 2, "ushort": 2}
             if isinstance(e, c_ast.Typename):
-                kind = type_kind(e)
-                return {"char": 1, "uchar": 1, "short": 2, "ushort": 2}.get(kind, 4)
+                t = e.type
+                dims = []
+                while isinstance(t, c_ast.ArrayDecl):
+                    dims.append(t.dim)
+                    t = t.type
+                kind = type_kind(t)
+                sz = elem.get(kind, 4)
+                for dn in dims:
+                    if dn is None:
+                        return sz
+                    sz *= int(self.ev(dn, fr))
+                return sz
             if isinstance(e, c_ast.ID):
                 v = self.find(fr, e.name)
                 if v is not None:
-                    sz = {"char": 1, "uchar": 1, "short": 2, "ushort": 2}.get(v.ct, 4)
+                    sz = elem.get(v.ct, 4)
                     return sz * (len(v.data) if v.arr else 1)
+            if isinstance(e, c_ast.ArrayRef):
+                p = self._subscript(e, fr)
+                if p.shape:
+                    return elem.get(p.ct, 4) * _dim_prod(p.shape)
             return 4
         v = self.ev(n.expr, fr)
         if isinstance(v, (Ptr, str)):
