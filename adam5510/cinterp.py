@@ -21,7 +21,8 @@ except ImportError:                     # pycparser 2.x
     from pycparser.plyparser import ParseError
 
 from .hardware import (HwError, ABIT, ABYTE, AWORD, STAND_CHANNELS,
-                       THERMISTORS, segment_value)
+                       THERMISTORS, AO_DEVICES, AI_DEVICES, AO_SLOT, AI_SLOT,
+                       segment_value)
 
 MAX_CALL_DEPTH = 64
 
@@ -249,15 +250,21 @@ def read_source(path):
 CONSTS = {"ABit": ABIT, "AByte": ABYTE, "AWord": AWORD, "NULL": 0,
           "PI": math.pi, "M_PI": math.pi, "E": math.e, "M_E": math.e}
 
-# Именованные константы каналов стенда: <Имя>_SLOT и <Имя>_CH.
+# Именованные константы каналов/слотов стенда: <Имя>_SLOT и <Имя>_CH.
 # Пример: Set5050(&v, Hot_SLOT, Hot_CH, ABit);
 for (_s, _c), (_nm, _kind, _desc) in STAND_CHANNELS.items():
     CONSTS[_nm + "_SLOT"] = _s
     CONSTS[_nm + "_CH"] = _c
 for _i, (_ch, _nm) in enumerate(THERMISTORS):
     CONSTS[_nm + "_AI"] = _ch        # вход ADAM-5017 с терморезистором
-    CONSTS[_nm + "_AO"] = _ch        # выход ADAM-5024, нагревающий его
-del _i, _ch, _nm, _s, _c, _kind, _desc
+# Аналоговые модули: ADAM-5024 (выходы, слот 2) и ADAM-5017 (входы, слот 3).
+CONSTS["ADAM5024_SLOT"] = AO_SLOT
+CONSTS["ADAM5017_SLOT"] = AI_SLOT
+for _ch, (_nm, _kind, _desc) in AO_DEVICES.items():
+    CONSTS[_nm + "_AO"] = _ch        # канал ADAM-5024
+for _ch, (_nm, _kind, _desc) in AI_DEVICES.items():
+    CONSTS[_nm + "_AI"] = _ch        # канал ADAM-5017
+del _i, _ch, _nm, _kind, _desc, _s, _c
 
 
 def _int(a, what="аргумент"):
@@ -373,6 +380,120 @@ def b_printf(it, a):
     return 0
 
 
+def _make_scanf(advance_input):
+    """Фабрика scanf/adv_scanf: читает числа из очереди консольного ввода.
+
+    scanf("формат %d...", &x) - по строке формата и указателям на переменные;
+    adv_scanf(&x, "%d", ...) - тот же смысл, но аргументы в обратном порядке
+    (сначала указатели, потом формат) - как в некоторых версиях 5510drv.h.
+    Возвращает число успешно прочитанных значений (как настоящая scanf).
+    """
+    def impl(it, a):
+        if advance_input and len(a) >= 2:
+            fmt = _pystr(a[-1])
+            targets = list(a[:-1])
+        else:
+            if not a:
+                raise RunError("scanf: нужна строка формата")
+            fmt = _pystr(a[0])
+            targets = list(a[1:])
+        n = 0
+        i = 0
+        L = len(fmt)
+        while i < L:
+            c = fmt[i]
+            if c != "%":
+                i += 1
+                continue
+            j = i + 1
+            if j >= L:
+                break
+            if fmt[j] == "%":                 # "%%" - обычный символ
+                i = j + 1
+                continue
+            flags = ""
+            while j < L and fmt[j] in "-+ 0#":
+                flags += fmt[j]
+                j += 1
+            width = ""
+            while j < L and fmt[j].isdigit():
+                width += fmt[j]
+                j += 1
+            prec = ""
+            if j < L and fmt[j] == ".":
+                j += 1
+                while j < L and fmt[j].isdigit():
+                    prec += fmt[j]
+                    j += 1
+            while j < L and fmt[j] in "lhL":  # длины: %ld, %hu, %lld
+                j += 1
+            if j >= L:
+                break
+            conv = fmt[j]
+            i = j + 1
+            if conv not in "diuxXfFeEgGcs":
+                continue                      # неизвестная спецификация - пропускаем
+            skip = "#" in flags               # %*s - прочитать и выбросить
+            if conv in "cs":                  # строка/символ: одно слово ввода
+                tok = it.read_token()
+                if tok is None:
+                    break
+                if not skip and targets:
+                    t = targets.pop(0)
+                    if conv == "c":
+                        _store(t, ord(tok[0]) if tok else 0)
+                    else:
+                        dst = getattr(t, "lst", None)
+                        if not isinstance(dst, list):
+                            raise RunError("scanf %%s: нужен массив char или &элемент")
+                        data = [ord(ch) & 0xFF for ch in tok] + [0]
+                        k0 = getattr(t, "idx", 0)
+                        for q, b in enumerate(data):
+                            if 0 <= k0 + q < len(dst):
+                                dst[k0 + q] = coerce(t.ct, b)
+                n += 1
+                continue
+            if not targets:
+                break
+            t = targets.pop(0)
+            want_float = conv in "fFeEgG" or t.ct == "float"
+            v = None
+            while v is None:
+                tok = it.read_token()
+                if tok is None:
+                    break
+                try:
+                    v = int(tok, 16) if conv in "xX" else int(tok)
+                except ValueError:
+                    try:
+                        v = int(float(tok))
+                    except ValueError:
+                        v = None
+                if v is None and want_float:
+                    try:
+                        v = float(tok)
+                    except ValueError:
+                        v = None
+                if v is None:
+                    it.out("? (%s) " % tok)   # токен не число - ждём следующий
+            if v is None:
+                break
+            _store(t, float(v) if want_float else v)
+            n += 1
+        return n
+    return impl
+
+
+def b_adv_printf(it, a):
+    """adv_printf(&m, "...", x, y, ...) - расширенный вывод: первым аргументом
+    может идти указатель (он просто пропускается), далее строка формата."""
+    args = [x for x in a if not isinstance(x, Ptr)]
+    if not args:
+        raise RunError("adv_printf: нужна строка формата")
+    it.out(c_format(_pystr(args[0]), args[1:]))
+    return 0
+
+
 def b_puts(it, a):
     it.out(_pystr(a[0]) + "\n")
     return 0
@@ -476,6 +597,72 @@ def b_SetThermistor(it, a):
     return 0
 
 
+# ---- аналоговая периферия стенда (ADAM-5024 / ADAM-5017) ----
+def b_SetMotor(it, a):
+    """SetMotor(номер 0/1, скорость) - Analog_Motor_1/2 (выходы ADAM-5024 0/1)."""
+    n = _int(a[0], "двигатель")
+    if n not in it.hw.motors:
+        raise RunError("нет аналогового двигателя %d (бывает 0 или 1)" % n)
+    it.hw.write_ao(n, _val(a[1]))
+    it.spin = 0
+    return 0
+
+
+def b_GetMotorAngle(it, a):
+    """GetMotorAngle(номер, &переменная) - угол повёрнутого вала, градусы."""
+    n = _int(a[0], "двигатель")
+    _store(a[1], it.hw.motor_angle(n))
+    it.poll_wait()
+    return 0
+
+
+def b_PlayTone(it, a):
+    """PlayTone(частота) - звук на динамике Speaker (выход ADAM-5024 №2)."""
+    hz = float(_val(a[0]))
+    it.hw.write_ao(2, hz)
+    if hz > 0:
+        it.out("[динамик: %d Гц]\n" % int(hz))
+    it.spin = 0
+    return 0
+
+
+def b_SetCoolExtreme(it, a):
+    """SetCoolExtreme(значение) - охладитель Cool_Extreme A/M (выход ADAM-5024 №3)."""
+    it.hw.write_ao(3, _val(a[0]))
+    it.spin = 0
+    return 0
+
+
+def b_GetSensor(it, a):
+    """GetSensor(канал ADAM-5017, &переменная) - напряжение датчика/резистора, В.
+
+    Именованные константы: Temp_AI, Light_Sensor_1_AI, Sound_Sensor_AI,
+    Light_Sensor_2_AI, Alarm_Sensor_AI, Counter_Cool_Extreme_AI,
+    Rezistor_2_AI, Rezistor_1_AI."""
+    ch = _int(a[0], "канал")
+    _store(a[1], it.hw.read_ai(ch))
+    it.poll_wait()
+    return 0
+
+
+def b_SetSensor(it, a):
+    """SetSensor(канал, напряжение 0..10) - задать показание датчика вручную."""
+    ch = _int(a[0], "канал")
+    it.hw.set_sensor(ch, float(_val(a[1])))
+    it.spin = 0
+    return 0
+
+
+def b_GetAO(it, a):
+    """GetAO(канал ADAM-5024, &переменная) - последнее записанное значение выхода."""
+    ch = _int(a[0], "канал")
+    if not 0 <= ch < 4:
+        raise RunError("неверный канал ADAM-5024: %d" % ch)
+    _store(a[1], it.hw.ao[ch])
+    it.poll_wait()
+    return 0
+
+
 # ---- математические функции (math.h) ----
 def _num(a, name):
     v = _val(a)
@@ -508,15 +695,24 @@ BUILTINS = {
     "Set5024": (b_Set5024, 2, 4), "Get5017": (b_Get5017, 2, 3),
     "Init5024": (b_noop, 0, 9), "Init5017": (b_noop, 0, 9), "Init5050": (b_noop, 0, 9),
     "LED_init": (b_noop, 0, 0), "ADAMdelay": (b_delay, 1, 1),
+    # ---- вывод/ввод ----
     "printf": (b_printf, 1, 99), "puts": (b_puts, 1, 1), "putchar": (b_putchar, 1, 1),
+    "scanf": (_make_scanf(False), 1, 99),
+    "adv_printf": (b_adv_printf, 1, 99),
+    "adv_scanf": (_make_scanf(True), 1, 99),
     "ReadInt": (b_ReadInt, 0, 0), "abs": (b_abs, 1, 1),
-    # ---- стенд ----
+    # ---- стенд: цифровая периферия ----
     "GetCounter": (b_GetCounter, 2, 2), "ResetCounter": (b_ResetCounter, 1, 1),
     "PulseCounter": (b_PulseCounter, 1, 1),
     "SetDigit": (b_SetDigit, 1, 1), "SetSegments": (b_SetSegments, 1, 1),
     "GetSegments": (b_GetSegments, 1, 1), "ClearDisplay": (b_ClearDisplay, 0, 0),
     "SetStandby": (b_SetStandby, 1, 1),
     "GetThermistor": (b_GetThermistor, 2, 2), "SetThermistor": (b_SetThermistor, 2, 2),
+    # ---- стенд: аналоговая периферия ----
+    "SetMotor": (b_SetMotor, 2, 2), "GetMotorAngle": (b_GetMotorAngle, 2, 2),
+    "PlayTone": (b_PlayTone, 1, 1), "SetCoolExtreme": (b_SetCoolExtreme, 1, 1),
+    "GetSensor": (b_GetSensor, 2, 2), "SetSensor": (b_SetSensor, 2, 2),
+    "GetAO": (b_GetAO, 2, 2),
 }
 for _n in _MATH_NAMES:
     BUILTINS[_n] = (_make_math(_n, 1), 1, 1)
@@ -740,6 +936,15 @@ class Interpreter(object):
             except queue.Empty:
                 pass
             except ValueError:
+                pass
+
+    def read_token(self):
+        """Один токен из консольного ввода (для scanf); None при остановке."""
+        while True:
+            self.tick()
+            try:
+                return self.input.get(timeout=0.05)
+            except queue.Empty:
                 pass
 
     def feed_input(self, text):

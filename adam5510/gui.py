@@ -7,7 +7,7 @@ import time
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-from .hardware import Hardware, STAND_CHANNELS, THERMISTORS
+from .hardware import Hardware, STAND_CHANNELS, AO_DEVICES, AI_DEVICES
 from .cinterp import (Program, Interpreter, CompileError, RunError, StopRun, read_source)
 
 SPEEDS = [("×1 (реальное время)", 1.0), ("×5", 5.0), ("×20", 20.0), ("×100", 100.0),
@@ -52,6 +52,10 @@ class App(object):
         f.add_separator()
         f.add_command(label="Выход", command=self.on_close)
         m.add_cascade(label="Файл", menu=f)
+        w = tk.Menu(m, tearoff=0)
+        w.add_command(label="Стенд", command=self.open_stand)
+        w.add_command(label="Плоттер", command=self.open_plotter)
+        m.add_cascade(label="Окна", menu=w)
         m.add_command(label="Авторы", command=lambda: messagebox.showinfo(
             "Авторы", "Учебный эмулятор ADAM-5510M\n(Python + tkinter, интерпретатор подмножества C)"))
         self.root.config(menu=m)
@@ -101,33 +105,50 @@ class App(object):
                                        font=("TkDefaultFont", 7))
                         lbl.grid(row=row, column=3, sticky="w")
                         self.dio_lbl[(slot, ch)] = lbl
-        lf = tk.LabelFrame(mid, text="ADAM-5024")
+        # ---- ADAM-5024 (слот 2): аналоговые выходы - моторы, динамик, охладитель ----
+        lf = tk.LabelFrame(mid, text="ADAM-5024 (№2)")
         lf.grid(row=0, column=2, sticky="n", padx=4)
         self.ao_lbl = []
+        self.ao_dev = []
         for ch in range(4):
-            v = tk.Label(lf, text="0")
-            v.pack(pady=(8, 0))
-            tk.Button(lf, text="Канал %d" % ch, width=10,
-                      command=lambda c=ch: self.hw.write_ao(c, 0)).pack(padx=6)
+            nm, kind, desc = AO_DEVICES[ch]
+            fr = tk.Frame(lf)
+            fr.pack(fill="x", padx=4, pady=3)
+            tk.Label(fr, text=nm, width=16, anchor="w", fg="#333",
+                     font=("TkDefaultFont", 8)).pack(side="left")
+            v = tk.Label(fr, text="0", width=6, relief="sunken", bg="white")
+            v.pack(side="left", padx=4)
+            tk.Button(fr, text="0", width=3,
+                      command=lambda c=ch: self.hw.write_ao(c, 0)).pack(side="left")
             self.ao_lbl.append(v)
-
-        lf = tk.LabelFrame(mid, text="ADAM-5017")
+            self.ao_dev.append(kind)
+        tk.Label(lf, text="Set5024(&v, канал): 0/1 - моторы,\n2 - динамик (Гц), 3 - Cool_Extreme A/M",
+                 justify="left", fg="#666", font=("TkDefaultFont", 7)).pack(anchor="w", padx=4, pady=2)
+        # ---- ADAM-5017 (слот 3): аналоговые входы - датчики стенда ----
+        lf = tk.LabelFrame(mid, text="ADAM-5017 (№3)")
         lf.grid(row=0, column=3, sticky="n", padx=4)
         self.ai_ent = []
+        self.ai_kind = []
         for ch in range(8):
-            tk.Label(lf, text=str(ch)).grid(row=ch, column=0)
-            e = tk.Entry(lf, width=7, justify="center", state="readonly",
+            nm, kind, desc = AI_DEVICES[ch]
+            self.ai_kind.append(kind)
+            fr = tk.Frame(lf)
+            fr.grid(row=ch, column=0, columnspan=3, sticky="we")
+            tk.Label(fr, text=str(ch), width=2, fg="#888", font=("TkDefaultFont", 7)).pack(side="left")
+            e = tk.Entry(fr, width=7, justify="center", state="readonly",
                          readonlybackground="white", cursor="arrow")
-            e.grid(row=ch, column=1, padx=2, pady=2)
+            e.pack(side="left", padx=2)
             e.bind("<Button-1>", lambda ev, c=ch: self.select_ai(c))
+            tk.Label(fr, text=nm, anchor="w", fg="#333",
+                     font=("TkDefaultFont", 7)).pack(side="left", padx=4)
             self.ai_ent.append(e)
         self.ai_scale = tk.Scale(lf, from_=10, to=0, resolution=0.1, orient="vertical",
                                  showvalue=False, length=190, command=self.on_scale)
-        self.ai_scale.grid(row=0, column=2, rowspan=8, padx=4)
-        tk.Label(lf, text="Значение").grid(row=0, column=3, columnspan=2, padx=4)
+        self.ai_scale.grid(row=0, column=3, rowspan=8, padx=4)
+        tk.Label(lf, text="Значение").grid(row=0, column=4, padx=4)
         self.ai_val = tk.Entry(lf, width=8)
-        self.ai_val.grid(row=1, column=3, columnspan=2, padx=4)
-        tk.Button(lf, text="Применить", command=self.apply_ai).grid(row=7, column=3, columnspan=2, padx=4)
+        self.ai_val.grid(row=1, column=4, padx=4)
+        tk.Button(lf, text="Применить", command=self.apply_ai).grid(row=7, column=4, padx=4)
         self.select_ai(0)
 
         lights = tk.Canvas(mid, width=90, height=300, highlightthickness=0)
@@ -139,7 +160,10 @@ class App(object):
             lights.create_text(45, y, text=name, font=("TkDefaultFont", 10, "bold"))
             self.lights[name] = (lights, lights.create_oval(20, y + 12, 70, y + 62, fill=off, outline=""), on, off)
 
-        tk.Button(r, text="Плоттер", width=12, command=self.open_plotter).pack(pady=2)
+        btns = tk.Frame(r)
+        btns.pack(pady=2)
+        tk.Button(btns, text="Стенд", width=12, command=self.open_stand).pack(side="left", padx=4)
+        tk.Button(btns, text="Плоттер", width=12, command=self.open_plotter).pack(side="left", padx=4)
 
         tk.Label(r, text="Консоль", anchor="w").pack(fill="x", padx=8)
         cf = tk.Frame(r)
@@ -198,7 +222,7 @@ class App(object):
         except ValueError:
             return
         v = max(0.0, min(10.0, v))
-        self.hw.ai[self.sel_ai] = v
+        self.hw.set_ai(self.sel_ai, v)      # терморезисторы - через set_thermistor
         self.ai_scale.set(v)
 
     def toggle_led(self, initial=False):
@@ -229,6 +253,16 @@ class App(object):
 
     def _plotter_closed(self):
         self.plotter_win = None
+
+    def open_stand(self):
+        """Кнопка/меню «Стенд»: окно учебного стенда (главная форма не нужна)."""
+        if self.stand_win is not None:
+            self.stand_win.lift()
+            return
+        self.stand_win = StandWindow(self.root, self.hw, self._stand_closed)
+
+    def _stand_closed(self):
+        self.stand_win = None
 
     def open_file(self):
         p = filedialog.askopenfilename(
