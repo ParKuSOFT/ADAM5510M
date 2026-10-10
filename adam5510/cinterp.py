@@ -20,7 +20,8 @@ try:                                    # pycparser 3.x
 except ImportError:                     # pycparser 2.x
     from pycparser.plyparser import ParseError
 
-from .hardware import HwError, ABIT, ABYTE, AWORD
+from .hardware import (HwError, ABIT, ABYTE, AWORD, STAND_CHANNELS,
+                       THERMISTORS, segment_value)
 
 MAX_CALL_DEPTH = 64
 
@@ -248,6 +249,16 @@ def read_source(path):
 CONSTS = {"ABit": ABIT, "AByte": ABYTE, "AWord": AWORD, "NULL": 0,
           "PI": math.pi, "M_PI": math.pi, "E": math.e, "M_E": math.e}
 
+# Именованные константы каналов стенда: <Имя>_SLOT и <Имя>_CH.
+# Пример: Set5050(&v, Hot_SLOT, Hot_CH, ABit);
+for (_s, _c), (_nm, _kind, _desc) in STAND_CHANNELS.items():
+    CONSTS[_nm + "_SLOT"] = _s
+    CONSTS[_nm + "_CH"] = _c
+for _i, (_ch, _nm) in enumerate(THERMISTORS):
+    CONSTS[_nm + "_AI"] = _ch        # вход ADAM-5017 с терморезистором
+    CONSTS[_nm + "_AO"] = _ch        # выход ADAM-5024, нагревающий его
+del _i, _ch, _nm, _s, _c, _kind, _desc
+
 
 def _int(a, what="аргумент"):
     if isinstance(a, (Ptr, str)):
@@ -380,6 +391,91 @@ def b_abs(it, a):
     return abs(_val(a[0]))
 
 
+# ---- функции учебного стенда (кнопки, светодиоды, счётчики, индикатор) ----
+def _slot_ch(it, a, nargs, fname):
+    if len(a) != nargs:
+        raise RunError("%s: нужно %d аргумента" % (fname, nargs))
+    return _int(a[0], "слот"), _int(a[1], "канал")
+
+
+def b_GetCounter(it, a):
+    """GetCounter(слот, &переменная) - число импульсов на Couster_N."""
+    slot = _int(a[0], "слот")
+    _store(a[1], it.hw.counter_value(slot))
+    it.poll_wait()
+    return 0
+
+
+def b_ResetCounter(it, a):
+    it.hw.reset_counter(_int(a[0], "слот"))
+    return 0
+
+
+def b_PulseCounter(it, a):
+    """Послать один импульс на счётчик (то же, что кнопка «+1» на стенде)."""
+    it.hw.pulse_counter(_int(a[0], "слот"))
+    it.spin = 0
+    return 0
+
+
+def b_SetDigit(it, a):
+    """SetDigit(n) - показать цифру 0..9 на семисегментном индикаторе."""
+    d = _int(_val(a[0]), "цифра")
+    if not 0 <= d <= 9:
+        raise RunError("SetDigit: цифра должна быть 0..9")
+    it.hw.set_seg_digit(d)
+    it.spin = 0
+    return 0
+
+
+def b_SetSegments(it, a):
+    """SetSegments(маска) - включить сегменты вручную (бит 0 = a ... бит 6 = g)."""
+    m = _int(_val(a[0]), "маска") & 0x7F
+    for bit, (s, c) in enumerate([(0, 11), (0, 12), (0, 13), (0, 14),
+                                  (1, 13), (1, 14), (1, 15)]):
+        it.hw.dio[s][c] = (m >> bit) & 1
+    it.hw.seg_digit = None
+    it.hw._notify()
+    it.spin = 0
+    return 0
+
+
+def b_GetSegments(it, a):
+    _store(a[0], it.hw.seg_mask())
+    it.poll_wait()
+    return 0
+
+
+def b_ClearDisplay(it, a):
+    it.hw.set_seg_digit(" ")
+    return 0
+
+
+def b_SetStandby(it, a):
+    """SetStandby(0/1) - программно нажать/отпустить кнопку Stand_by."""
+    it.hw.set_input(1, 4, _int(_val(a[0]), "состояние"))
+    return 0
+
+
+def b_GetThermistor(it, a):
+    """GetThermistor(номер 0/1, &переменная) - напряжение терморезистора, В."""
+    n = _int(a[0], "терморезистор")
+    if not 0 <= n < len(it.hw.thermistors):
+        raise RunError("нет терморезистора %d" % n)
+    _store(a[1], it.hw.thermistors[n].volts)
+    it.poll_wait()
+    return 0
+
+
+def b_SetThermistor(it, a):
+    """SetThermistor(номер 0/1, нагрев %) - задать температуру вручную."""
+    n = _int(a[0], "терморезистор")
+    if not 0 <= n < len(it.hw.thermistors):
+        raise RunError("нет терморезистора %d" % n)
+    it.hw.set_thermistor(n, float(_val(a[1])))
+    return 0
+
+
 # ---- математические функции (math.h) ----
 def _num(a, name):
     v = _val(a)
@@ -414,6 +510,13 @@ BUILTINS = {
     "LED_init": (b_noop, 0, 0), "ADAMdelay": (b_delay, 1, 1),
     "printf": (b_printf, 1, 99), "puts": (b_puts, 1, 1), "putchar": (b_putchar, 1, 1),
     "ReadInt": (b_ReadInt, 0, 0), "abs": (b_abs, 1, 1),
+    # ---- стенд ----
+    "GetCounter": (b_GetCounter, 2, 2), "ResetCounter": (b_ResetCounter, 1, 1),
+    "PulseCounter": (b_PulseCounter, 1, 1),
+    "SetDigit": (b_SetDigit, 1, 1), "SetSegments": (b_SetSegments, 1, 1),
+    "GetSegments": (b_GetSegments, 1, 1), "ClearDisplay": (b_ClearDisplay, 0, 0),
+    "SetStandby": (b_SetStandby, 1, 1),
+    "GetThermistor": (b_GetThermistor, 2, 2), "SetThermistor": (b_SetThermistor, 2, 2),
 }
 for _n in _MATH_NAMES:
     BUILTINS[_n] = (_make_math(_n, 1), 1, 1)
