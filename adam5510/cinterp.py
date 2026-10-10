@@ -4,9 +4,12 @@
 Поддерживается: int/short/char/unsigned/float, массивы (одномерные), указатели на
 переменные и элементы массивов (&x, &a[i], *p, p[i]), функции с параметрами и
 рекурсией, if/else, for, while, do-while, switch, break/continue/return,
-все обычные операторы, #define без параметров, printf/puts.
+все обычные операторы, #define без параметров, printf/puts, математические
+функции из math.h (sin, cos, tan, asin, acos, atan, atan2, sqrt, pow, fabs,
+exp, log, log10, ceil, floor, sinh, cosh, tanh).
 Не поддерживается: struct/union/enum/typedef, goto, многомерные массивы, #define с параметрами.
 """
+import math
 import re
 import time
 import queue
@@ -17,7 +20,8 @@ try:                                    # pycparser 3.x
 except ImportError:                     # pycparser 2.x
     from pycparser.plyparser import ParseError
 
-from .hardware import HwError, ABIT, ABYTE, AWORD
+from .hardware import (HwError, ABIT, ABYTE, AWORD, STAND_CHANNELS,
+                       THERMISTORS, segment_value)
 
 MAX_CALL_DEPTH = 64
 
@@ -51,6 +55,21 @@ class _Return(Exception):
     def __init__(self, value):
         Exception.__init__(self)
         self.value = value
+
+
+# Списки стандартных математических функций (math.h), которые понимает интерпретатор.
+_MATH_NAMES = ["sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh",
+               "tanh", "sqrt", "exp", "log", "log10", "log2", "fabs", "floor",
+               "ceil", "trunc"]
+_MATH2_NAMES = ["atan2", "pow", "fmod"]
+
+# Объявления этих функций добавляются перед текстом программы при разборе,
+# чтобы парсер их распознавал. Номера строк не сдвигаются: столько же пустых
+# строк вставляется в начало текста.
+_MATH_PROTOTYPES = "\n".join(
+    ["double %s(double x);" % n for n in _MATH_NAMES] +
+    ["double %s(double x, double y);" % n for n in _MATH2_NAMES])
+_MATH_PROTO_LINES = _MATH_PROTOTYPES.count("\n") + 1
 
 
 # --------------------------------------------------------------------------- #
@@ -209,7 +228,8 @@ def preprocess(src):
     for name, val in macros.items():
         pat = re.compile(r"\b%s\b" % re.escape(name))
         lines = [pat.sub(val, ln) for ln in lines]
-    return "\n".join(lines), errors
+    text = "\n".join(lines)
+    return text, errors
 
 
 def read_source(path):
@@ -226,7 +246,18 @@ def read_source(path):
 # --------------------------------------------------------------------------- #
 #  Встроенные функции драйвера (5510drv.h) и константы
 # --------------------------------------------------------------------------- #
-CONSTS = {"ABit": ABIT, "AByte": ABYTE, "AWord": AWORD, "NULL": 0}
+CONSTS = {"ABit": ABIT, "AByte": ABYTE, "AWord": AWORD, "NULL": 0,
+          "PI": math.pi, "M_PI": math.pi, "E": math.e, "M_E": math.e}
+
+# Именованные константы каналов стенда: <Имя>_SLOT и <Имя>_CH.
+# Пример: Set5050(&v, Hot_SLOT, Hot_CH, ABit);
+for (_s, _c), (_nm, _kind, _desc) in STAND_CHANNELS.items():
+    CONSTS[_nm + "_SLOT"] = _s
+    CONSTS[_nm + "_CH"] = _c
+for _i, (_ch, _nm) in enumerate(THERMISTORS):
+    CONSTS[_nm + "_AI"] = _ch        # вход ADAM-5017 с терморезистором
+    CONSTS[_nm + "_AO"] = _ch        # выход ADAM-5024, нагревающий его
+del _i, _ch, _nm, _s, _c, _kind, _desc
 
 
 def _int(a, what="аргумент"):
@@ -360,6 +391,118 @@ def b_abs(it, a):
     return abs(_val(a[0]))
 
 
+# ---- функции учебного стенда (кнопки, светодиоды, счётчики, индикатор) ----
+def _slot_ch(it, a, nargs, fname):
+    if len(a) != nargs:
+        raise RunError("%s: нужно %d аргумента" % (fname, nargs))
+    return _int(a[0], "слот"), _int(a[1], "канал")
+
+
+def b_GetCounter(it, a):
+    """GetCounter(слот, &переменная) - число импульсов на Couster_N."""
+    slot = _int(a[0], "слот")
+    _store(a[1], it.hw.counter_value(slot))
+    it.poll_wait()
+    return 0
+
+
+def b_ResetCounter(it, a):
+    it.hw.reset_counter(_int(a[0], "слот"))
+    return 0
+
+
+def b_PulseCounter(it, a):
+    """Послать один импульс на счётчик (то же, что кнопка «+1» на стенде)."""
+    it.hw.pulse_counter(_int(a[0], "слот"))
+    it.spin = 0
+    return 0
+
+
+def b_SetDigit(it, a):
+    """SetDigit(n) - показать цифру 0..9 на семисегментном индикаторе."""
+    d = _int(_val(a[0]), "цифра")
+    if not 0 <= d <= 9:
+        raise RunError("SetDigit: цифра должна быть 0..9")
+    it.hw.set_seg_digit(d)
+    it.spin = 0
+    return 0
+
+
+def b_SetSegments(it, a):
+    """SetSegments(маска) - включить сегменты вручную (бит 0 = a ... бит 6 = g)."""
+    m = _int(_val(a[0]), "маска") & 0x7F
+    for bit, (s, c) in enumerate([(0, 11), (0, 12), (0, 13), (0, 14),
+                                  (1, 13), (1, 14), (1, 15)]):
+        it.hw.dio[s][c] = (m >> bit) & 1
+    it.hw.seg_digit = None
+    it.hw._notify()
+    it.spin = 0
+    return 0
+
+
+def b_GetSegments(it, a):
+    _store(a[0], it.hw.seg_mask())
+    it.poll_wait()
+    return 0
+
+
+def b_ClearDisplay(it, a):
+    it.hw.set_seg_digit(" ")
+    return 0
+
+
+def b_SetStandby(it, a):
+    """SetStandby(0/1) - программно нажать/отпустить кнопку Stand_by."""
+    it.hw.set_input(1, 4, _int(_val(a[0]), "состояние"))
+    return 0
+
+
+def b_GetThermistor(it, a):
+    """GetThermistor(номер 0/1, &переменная) - напряжение терморезистора, В."""
+    n = _int(a[0], "терморезистор")
+    if not 0 <= n < len(it.hw.thermistors):
+        raise RunError("нет терморезистора %d" % n)
+    _store(a[1], it.hw.thermistors[n].volts)
+    it.poll_wait()
+    return 0
+
+
+def b_SetThermistor(it, a):
+    """SetThermistor(номер 0/1, нагрев %) - задать температуру вручную."""
+    n = _int(a[0], "терморезистор")
+    if not 0 <= n < len(it.hw.thermistors):
+        raise RunError("нет терморезистора %d" % n)
+    it.hw.set_thermistor(n, float(_val(a[1])))
+    return 0
+
+
+# ---- математические функции (math.h) ----
+def _num(a, name):
+    v = _val(a)
+    if isinstance(v, str):
+        raise RunError("%s: ожидалось число" % name)
+    return float(v)
+
+
+def _make_math(name, nargs):
+    fn = getattr(math, name)
+
+    def impl(it, a):
+        args = [_num(x, name) for x in a[:nargs]]
+        try:
+            return float(fn(*args))
+        except ValueError:
+            raise RunError("%s(%s): значение вне области определения" % (
+                name, ", ".join(repr(x) for x in args)))
+        except OverflowError:
+            raise RunError("%s(%s): переполнение" % (
+                name, ", ".join(repr(x) for x in args)))
+        except ZeroDivisionError:
+            raise RunError("%s(%s): ошибка аргумента" % (
+                name, ", ".join(repr(x) for x in args)))
+    return impl
+
+
 BUILTINS = {
     "Set5050": (b_Set5050, 4, 4), "Get5050": (b_Get5050, 4, 4),
     "Set5024": (b_Set5024, 2, 4), "Get5017": (b_Get5017, 2, 3),
@@ -367,7 +510,19 @@ BUILTINS = {
     "LED_init": (b_noop, 0, 0), "ADAMdelay": (b_delay, 1, 1),
     "printf": (b_printf, 1, 99), "puts": (b_puts, 1, 1), "putchar": (b_putchar, 1, 1),
     "ReadInt": (b_ReadInt, 0, 0), "abs": (b_abs, 1, 1),
+    # ---- стенд ----
+    "GetCounter": (b_GetCounter, 2, 2), "ResetCounter": (b_ResetCounter, 1, 1),
+    "PulseCounter": (b_PulseCounter, 1, 1),
+    "SetDigit": (b_SetDigit, 1, 1), "SetSegments": (b_SetSegments, 1, 1),
+    "GetSegments": (b_GetSegments, 1, 1), "ClearDisplay": (b_ClearDisplay, 0, 0),
+    "SetStandby": (b_SetStandby, 1, 1),
+    "GetThermistor": (b_GetThermistor, 2, 2), "SetThermistor": (b_SetThermistor, 2, 2),
 }
+for _n in _MATH_NAMES:
+    BUILTINS[_n] = (_make_math(_n, 1), 1, 1)
+for _n in _MATH2_NAMES:
+    BUILTINS[_n] = (_make_math(_n, 2), 2, 2)
+del _n
 
 
 # --------------------------------------------------------------------------- #
@@ -393,15 +548,23 @@ class Program(object):
         if errors:
             raise CompileError(errors)
         try:
-            ast = c_parser.CParser().parse(text, filename="<prog>")
+            # в начало добавляем объявления math-функций и столько же пустых строк,
+            # чтобы номера строк исходника не сдвинулись
+            pad = "\n" * _MATH_PROTO_LINES
+            ast = c_parser.CParser().parse(_MATH_PROTOTYPES + pad + text,
+                                           filename="<prog>")
         except ParseError as e:
             m = re.search(r":(\d+):(\d+): (.*)", str(e))
             if m:
-                raise CompileError([(int(m.group(1)), "синтаксическая ошибка: " + m.group(3))])
+                raise CompileError([(max(1, int(m.group(1)) - _MATH_PROTO_LINES),
+                                     "синтаксическая ошибка: " + m.group(3))])
             raise CompileError([(None, "синтаксическая ошибка: %s" % e)])
         self.funcs, self.protos, self.global_decls = {}, set(), []
         errs = []
         for ext in ast.ext:
+            if isinstance(ext, c_ast.Decl) and isinstance(ext.type, c_ast.FuncDecl) \
+                    and ext.coord is not None and ext.coord.line <= _MATH_PROTO_LINES:
+                continue                        # наши служебные объявления math.h
             if isinstance(ext, c_ast.FuncDef):
                 try:
                     self.funcs[ext.decl.name] = UserFunc(ext)

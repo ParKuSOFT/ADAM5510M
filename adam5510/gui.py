@@ -7,12 +7,17 @@ import time
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-from .hardware import Hardware
+from .hardware import Hardware, STAND_CHANNELS, THERMISTORS
 from .cinterp import (Program, Interpreter, CompileError, RunError, StopRun, read_source)
 
 SPEEDS = [("×1 (реальное время)", 1.0), ("×5", 5.0), ("×20", 20.0), ("×100", 100.0),
           ("Максимум", 0.0)]
 ON_BG, OFF_BG = "#8ee08e", "#f0f0f0"
+
+# Кнопки основной формы, которые "физически" принадлежат стенду:
+#   in  - нажимаются мышкой (кнопка/датчик); out - загораются, когда программа пишет 1.
+STAND_BUTTONS = {"in": ("Stand_by",),
+                 "out": ("Hot", "Wait", "Hot_Extreme", "Alarm_Saund", "Cool")}
 
 
 class App(object):
@@ -23,6 +28,7 @@ class App(object):
         self.thread = None
         self.out_q = queue.Queue()
         self.plotter_win = None
+        self.stand_win = None
         self.sel_ai = 0
 
         root.title("ADAM-5510M — эмулятор")
@@ -66,6 +72,10 @@ class App(object):
         mid = tk.Frame(r)
         mid.pack(padx=8, pady=4)
         self.dio_btn = [[None] * 16 for _ in range(2)]
+        self.dio_lbl = {}
+        name_by_key = {k: v[0] for k, v in STAND_CHANNELS.items()}
+        kind_by_key = {k: v[1] for k, v in STAND_CHANNELS.items()}
+        led_names = set(STAND_BUTTONS["out"]) | {"Work"}
         for slot in range(2):
             lf = tk.LabelFrame(mid, text="ADAM-5050 (№%d)" % slot)
             lf.grid(row=0, column=slot, sticky="n", padx=4)
@@ -73,11 +83,24 @@ class App(object):
                 tk.Label(lf, text=str(row), fg="#888", font=("TkDefaultFont", 7)).grid(row=row, column=0)
                 for col in range(2):
                     ch = row + 8 * col
-                    b = tk.Button(lf, text="0", width=2, bg=OFF_BG,
-                                  command=lambda s=slot, c=ch: self.hw.toggle_dio(s, c))
+                    nm = name_by_key.get((slot, ch), "")
+                    if nm in led_names:                 # светодиод стенда (загорается от 1)
+                        b = tk.Button(lf, text="", width=3, relief="raised",
+                                      command=lambda s=slot, c=ch: self.hw.toggle_dio(s, c))
+                    elif kind_by_key.get((slot, ch)) == "in":   # кнопка / датчик наличия
+                        b = tk.Button(lf, text="0", width=3, bg=OFF_BG,
+                                      command=lambda s=slot, c=ch: self.hw.set_input(
+                                          s, c, 0 if self.hw.dio[s][c] else 1))
+                    else:                               # обмотки, перо, направление и т.п.
+                        b = tk.Button(lf, text="0", width=3, bg=OFF_BG,
+                                      command=lambda s=slot, c=ch: self.hw.toggle_dio(s, c))
                     b.grid(row=row, column=1 + col, padx=2, pady=2)
                     self.dio_btn[slot][ch] = b
-
+                    if nm:                              # подпись с именем канала справа
+                        lbl = tk.Label(lf, text=nm, anchor="w", fg="#333",
+                                       font=("TkDefaultFont", 7))
+                        lbl.grid(row=row, column=3, sticky="w")
+                        self.dio_lbl[(slot, ch)] = lbl
         lf = tk.LabelFrame(mid, text="ADAM-5024")
         lf.grid(row=0, column=2, sticky="n", padx=4)
         self.ao_lbl = []
