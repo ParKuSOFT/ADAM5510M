@@ -884,7 +884,10 @@ def b_GetThermistor(it, a):
 
 
 def b_SetThermistor(it, a):
-    """SetThermistor(номер 0/1, нагрев %) - задать температуру вручную."""
+    """SetThermistor(номер 0/1, температура °C) - задать температуру вручную.
+
+    Напряжение на входе ADAM-5017 считается автоматически по закону NTC.
+    """
     n = _int(a[0], "терморезистор")
     if not 0 <= n < len(it.hw.thermistors):
         raise RunError("нет терморезистора %d" % n)
