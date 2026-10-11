@@ -89,7 +89,7 @@ AO_DEVICES = {
 }
 
 AI_DEVICES = {
-    0: ("Temp", "thermistor", "Терморезистор (NTC): 10 В = холодный, 0 В = горячий"),
+    0: ("Temp", "thermistor", "Терморезистор (NTC): холодный -> больше В, горячий -> меньше В"),
     1: ("Light_Sensor_1", "sensor", "Датчик света U1 (ΔU1): напряжение 0..10 В"),
     2: ("Sound_Sensor", "sensor", "Датчик звука (микрофон): напряжение 0..10 В"),
     3: ("Light_Sensor_2", "sensor", "Датчик света U2 (ΔU2): напряжение 0..10 В"),
@@ -373,33 +373,70 @@ class Hoist(object):
         return changed
 
 
+# --------------------------------------------------------------------------- #
+#  Ток/напряжение терморезистора по схеме: делитель NTC + постоянный резистор
+#  на опорном напряжении VREF; вход АЦП читает напряжение на NTC.
+#  R_T(t) = R0 * exp(B * (1/T - 1/T0)),  T в Кельвинах.
+# --------------------------------------------------------------------------- #
+THERM_R0 = 10000.0          # сопротивление NTC при T0
+THERM_B = 3950.0            # B-коэффициент, К
+THERM_T0_C = 25.0           # температура отсчёта, °C
+THERM_RSERIES = 10000.0     # постоянное плечо делителя, Ом
+THERM_VREF = 10.0           # опорное напряжение делителя, В
+
+
+def thermistor_resistance(temp_c):
+    """Сопротивление NTC при температуре temp_c (°C), Ом."""
+    t_k = max(-50.0, float(temp_c)) + 273.15
+    t0_k = THERM_T0_C + 273.15
+    return THERM_R0 * math.exp(THERM_B * (1.0 / t_k - 1.0 / t0_k))
+
+
+def thermister_volts(temp_c):
+    """Напряжение на NTC в делителе: холодный -> почти 0 В, горячий -> ~VREF."""
+    r_t = thermistor_resistance(temp_c)
+    return round(THERM_VREF * r_t / (r_t + THERM_RSERIES), 3)
+
+
 class Thermistor(object):
     """Терморезистор (NTC) с делителем на входе ADAM-5017.
 
-    Ползунок задаёт "нагрев" 0..100%; напряжение на входе 0..10 В:
-    холодный терморезистор -> высокое напряжение, горячий -> низкое.
+    Ползунок в окне стенда задаёт температуру в °C; программа сама
+    пересчитывает её в напряжение по закону NTC (термister_volts) и подаёт
+    на соответствующий аналоговый вход ADAM-5017.
     Дополнительно нагревается выходом ADAM-5024 (heater_ao), охлаждается
     охладителем (cooler_ao) и цифровым вентилятором Cool (канал 1:12).
     """
 
+    AMBIENT = 25.0          # комнатная температура, °C
+
     def __init__(self, channel, name, heater_ao=None, cooler_ao=None):
         self.ch = channel
         self.name = name
-        self.power = 0.0        # нагрев от внешних цепей, %
-        self.level = 50.0       # показание ползунка, %
-        self.vref = 10.0
+        self.power = 0.0        # нагрев от внешних цепей, °C сверх ползунка
+        self.level = self.AMBIENT   # показание ползунка, °C
+        self.vref = THERM_VREF
         self.heater_ao = heater_ao      # выход ADAM-5024, греющий этот терморезистор
         self.cooler_ao = cooler_ao      # выход ADAM-5024, охлаждающий его
         self.fan_ch = (1, 12)           # цифровой канал "Cool" (вентилятор)
 
     @property
     def temp_pct(self):
-        p = self.level + self.power
-        return max(0.0, min(100.0, p))
+        """«Горячесть» 0..100% для старых формул (по шкале 0..100 °C)."""
+        return max(0.0, min(100.0, self.temp_c))
+
+    @property
+    def temp_c(self):
+        """Фактическая температура сенсора: ползунок + нагрев от цепей."""
+        return max(-40.0, min(150.0, self.level + self.power))
+
+    @property
+    def resistance(self):
+        return thermistor_resistance(self.temp_c)
 
     @property
     def volts(self):
-        return round(self.vref * (1.0 - self.temp_pct / 100.0), 3)
+        return thermister_volts(self.temp_c)
 
     def update(self, ai_list):
         ai_list[self.ch] = self.volts
@@ -477,19 +514,20 @@ class Hardware:
                     changed = True
                 if h.update_sensors(self.dio):
                     changed = True
-        # терморезисторы: нагрев от выходов ADAM-5024, остывание (вент. Cool ускоряет)
+        # терморезисторы: ползунок задаёт температуру среды (t.level, °C),
+        # выходы ADAM-5024 добавляют нагрев/охлаждение (°C сверх ползунка);
+        # напряжение на входе АЦП считается по закону NTC в update()/volts
         fan = bool(self.dio[1][12])
         for t in self.thermistors:
-            ext = 0.0
+            heat = 0.0
             if t.heater_ao is not None:
                 v = float(self.ao[t.heater_ao])
-                # 0..10 В трактуем как 0..100 % нагрева
-                ext += v * 10.0 if 0.0 <= v <= 10.0 else max(0.0, min(100.0, v))
+                heat += max(0.0, min(80.0, v * 8.0))     # 0..10 В -> добавка до +80 °C
             cool = 0.0
             if t.cooler_ao is not None:
-                cool = max(0.0, min(100.0, float(self.ao[t.cooler_ao])))
-            tgt = min(100.0, ext)
-            k = (2.5 + 6.0 * fan + 3.0 * cool / 100.0) * dt
+                cool = max(0.0, min(80.0, float(self.ao[t.cooler_ao]) * 8.0))
+            tgt = max(-80.0, min(80.0, heat - cool))
+            k = (2.5 + 6.0 * fan) * dt
             if abs(t.power - tgt) > 0.01:
                 t.power += (tgt - t.power) * min(1.0, k)
                 changed = True
@@ -616,8 +654,13 @@ class Hardware:
         self.set_input(slot, ch, 0 if self.dio[slot][ch] else 1)
 
     def set_thermistor(self, index, level):
+        """Ползунок/программа задают температуру терморезистора в °C.
+
+        Напряжение на аналоговом входе ADAM-5017 программа считает сама
+        по закону NTC (thermister_volts) - см. Thermistor.volts/update().
+        """
         t = self.thermistors[index]
-        t.level = max(0.0, min(100.0, float(level)))
+        t.level = max(-40.0, min(150.0, float(level)))
         t.update(self.ai)
         self._notify()
 
@@ -629,7 +672,7 @@ class Hardware:
             # вход Temp занят терморезистором - ползунком задаём его температуру
             for t in self.thermistors:
                 if t.ch == ch:
-                    return self.set_thermistor(self.thermistors.index(t), val * 10.0)
+                    return self.set_thermistor(self.thermistors.index(t), val * 15.0 - 40.0)
         self.sensor_levels[ch] = max(0.0, min(10.0, float(val)))
         self.ai[ch] = round(self.sensor_levels[ch], 3)
         self._notify()
@@ -731,7 +774,7 @@ class Hardware:
         if kind == "thermistor":
             for i, t in enumerate(self.thermistors):
                 if t.ch == ch:
-                    return self.set_thermistor(i, float(val) * 10.0)
+                    return self.set_thermistor(i, float(val) * 15.0 - 40.0)
         self.sensor_levels[ch] = max(0.0, min(10.0, float(val)))
         self.ai[ch] = round(self.sensor_levels[ch], 3)
         self._notify()
